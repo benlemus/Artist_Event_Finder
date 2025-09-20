@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+<!-- title -->
+{% block title %}
+<title>Homepage</title>
+{% endblock %}
+
+<!-- content -->
+{% block content %} {% if user and artists %}
+<h1>Hello {{user['display_name']}}</h1>
+<a href="/logout">logout</a>
+<a href="/switch-accounts">Switch Accounts</a>
+
+<div class="container">
+  <ul>
+    {% for artist in artists %}
+    <li>{{artist}}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% else %}
+<h1>Hello, you should login for a better experience</h1>
+<a href="/login">Login With Spotify</a>
+{% endif %} {% endblock %}

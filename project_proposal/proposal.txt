@@ -1,0 +1,57 @@
+Project Proposal
+
+Stack
+   The stack I plan to use is:
+      JavaScript (Front-end)
+      Python (Back-end)
+      SQL (Database)
+      WTForms
+      Spotify API
+      Ticketmaster API
+      X API (possibly)
+      Instagram API (possibly)
+
+Focus
+   I am planning for this application to be more front-end UI but also have a strong back-end. I want it to look and feel good when interacting with the UI. I am planning on the application to be mostly API calls but the back-end will still store user data.
+
+Type
+   The type of application this project will be is a website application as the main focus. But I am interested in making it into a mobile app in the future.
+
+Goal
+   The goal of this application is to help people find events tailored to them and see their friends attending or possibly new friends.
+
+Users
+   The demographic of my application is mostly anyone(18-60 years old) that is looking to have a good experience and looking to attend an event with their liked artists.
+
+Data
+   The data I plan on using is from API’s that will be the user profile on Spotify. I will also be using the Ticketmaster API to access real time updates on events near the user. From the Spotify API, I will hopefully get user data that contains favorite artists and or songs and possibly recently played. Through the Ticketmaster API, I will hopefully get the information on artists, venues, times and potential opening artists. With the A and Instagram API's, I plan on possibly using them to get data on updates/ posts from prior events if an artist is on tour or has just had an event. I plan on using direct API’s.
+
+
+
+1. What does your database schema look like?
+      (Full DB Schema In Folder)
+      My database schema for now is pretty basic only consisting of 2 tables. There will be one for users and one to track followers.
+
+2. What kind of issues might you run into with your API?
+      After some research into the API's I will be using, I haven't seen some noticable problems that might come up. Some things that could possibly happen is obviously if the API's servers are down for any reason. Another problem that may arise is when I am searching for artist events, multiple artists could have the same name.
+
+3. Is there any sensitive information you need to secure?
+      Yes, the information I need to secure is the API keys, users passwords and database url.
+
+4. What functionality will your app include?
+      The functionality will be:
+            - See up to date events for users favorite artists
+            - See potential friends attending the event
+            - Meet new friends to experience the event with
+            - Easily linked to purchase tickets
+            - See posts/news from recent events specific to an artist
+
+
+5. What will the user flow look like?
+      (Full User Flow In Folder)
+      The user flow will consist of a user logging in, connecting to their Spotify account, seeing events of artists they like and similar artists, ability to purchase tickets if they chose too, seeing who else is attending.
+
+6. What features make your site more than a CRUD app? What are your stretch goals?
+      The features that make my app more than a CRUD app is fetch live events to a specific artist and being able to interact with people and see friends also attending the event.
+
+      My stretch goals are to have people find their events tailored to their likes and meet new friends to go with, or go with existing friends. I would also like to add a feature to have a listening room dedicated to that artist where people can chat.
