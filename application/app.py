@@ -27,6 +27,11 @@ SCOPE = 'user-read-private user-read-email user-top-read streaming'
 
 SPOTIFY_TOKEN_INFO = None
 
+TICKETMASTER_API_KEY = os.environ.get('TICKETMASTER_API_KEY')
+
+TICKETMASTER_BASE_URL = 'https://app.ticketmaster.com/discovery/v2/'
+
+
 # ==============================================================
         # FLASK ROUTES
 # ==============================================================
@@ -78,6 +83,18 @@ def switch_account():
     auth_url = f'{SPOTIFY_AUTH_URL}?{urlencode(params)}'
     return redirect(auth_url)
 
+@app.route('/artist-search')
+def artist_search():
+    access_token = check_refesh_get_token_spotify()
+    headers = {'Authorization': f'Bearer {access_token}'}
+
+    top_artists = get_cur_u_top_artists(headers)   
+    artists = set_up_artists_TM(top_artists)
+   
+    events = get_events_TM(artists)
+    print(events)
+
+    return redirect(url_for('homepage'))
 
 @app.route('/callback')
 def callback():
@@ -94,7 +111,7 @@ def callback():
     return 'No code'
 
 # ==============================================================
-        # PYTHON CODE
+        # SPOTIFY PYTHON FUNCTIONS
 # ==============================================================
 
 
@@ -155,9 +172,106 @@ def get_cur_u_top_artists(headers):
     top_artists = requests.get(f'{SPOTIFY_BASE_URL}/me/top/artists?{urlencode(params)}', headers=headers)
     users_top = top_artists.json()
 
-    artist_names = []
+    artists_setup = []
     for artist in users_top.get('items', None):
-        artist_names.append(artist.get('name', None))
 
-    return artist_names
+        setup = {
+            'name': artist.get('name', None),
+            'spotify_id': artist.get('id'),
+            'spotify_genres': artist.get('genres')
+        }
+        artists_setup.append(setup)
+
+    return artists_setup
+
+
+# ==============================================================
+        # TICKETMASTER PYTHON FUNCTIONS
+# ==============================================================
+
+def set_up_artists_TM(artists):
+    if artists:
+        artists_setup = []
+        for artist in artists:
+            name = artist.get('name', None)
+            spot_id = artist.get('spotify_id', None)
+            spot_genres = artist.get('spotify_genres', [])
+            genre_ids = []
+
+            if len(spot_genres) > 0:
+                for genre in spot_genres:
+                    genre_id = get_genre_id_TM(genre)
+                    genre_ids.append(genre_id)
+
+            attraction_id = get_attraction_id_TM(name, genre_ids)
+
+            if attraction_id == None:
+                return 'Could not get artist TM ID'
+            setup = {
+                'name': name,
+                'spotify_id': spot_id,
+                'spotify_genres': spot_genres,
+                'genre_ids': genre_ids,
+                'attraction_id': attraction_id
+            }
+            artists_setup.append(setup)
+        return artists_setup 
+    return None
+
+def get_genre_id_TM(genre):
+
+    res = requests.get(f'{TICKETMASTER_BASE_URL}/classifications.json?keyword={genre}&apikey={TICKETMASTER_API_KEY}')
+
+    genre_id = res.json().get('_embedded', None).get('classifications', [{}])[0].get('segment', None).get('_embedded', None).get('genres', [{}])[0].get('id', None)
+
+    if not genre_id:
+        return None
+    
+    return genre_id
+
+
+def get_attraction_id_TM(name, genres):
+    if name:
+        name = name.replace(' ', '%20')
+        if len(genres) > 0:
+            if len(genres) > 1:
+                genres = ','.join(genres)
+            else:
+                genres = genres[0]
+            res = requests.get(f'{TICKETMASTER_BASE_URL}/attractions.json?keyword={name}&genreId={genres}&apikey={TICKETMASTER_API_KEY}')
+
+            if res.status_code == 200:
+                return res.json().get('_embedded', None).get('attractions', [{}])[0].get('id', None)
+
+        res = requests.get(f'{TICKETMASTER_BASE_URL}/attractions.json?keyword={name}&apikey={TICKETMASTER_API_KEY}')
+
+        return res.json().get('_embedded', None).get('attractions', [{}])[0].get('id', None)
+    return None
+
+def get_events_TM(artists):
+    # user = {
+    #     'postal_code': 9002,
+    #     'radius': 100,
+    #     'unit': 'miles'
+    # }
+
+    # postal_code = user.get('postal_code', 9001)
+    # radius = user.get('radius', 50)
+    # unit = user.get('unit','miles')
+
+    if artists:
+        events = []
+        for artist in artists:
+            attraction_id = artist.get('attraction_id', None)
+
+            if attraction_id:
+                # res = requests.get(f'{TICKETMASTER_BASE_URL}/events.json?attractionId={attraction_id}&postalCode={postal_code}&radius={radius}&unit={unit}&apikey={TICKETMASTER_API_KEY}')
+                res = requests.get(f'{TICKETMASTER_BASE_URL}/events.json?attractionId={attraction_id}&apikey={TICKETMASTER_API_KEY}')
+                print(res.json())
+        return events    
+    return None
+
+
+
+# ADD ARTIST TO DB USING ARTIST NAME, SPOT ID AND ATTRACTION ID
 
