@@ -5,6 +5,9 @@ from dotenv import load_dotenv
 from urllib.parse import urlencode
 import base64
 import time
+import pgeocode
+import pycountry
+import pygeohash as pgh
 
 load_dotenv()
 app = Flask(__name__)
@@ -90,9 +93,7 @@ def artist_search():
 
     top_artists = get_cur_u_top_artists(headers)   
     artists = set_up_artists_TM(top_artists)
-   
     events = get_events_TM(artists)
-    print(events)
 
     return redirect(url_for('homepage'))
 
@@ -164,12 +165,15 @@ def get_cur_u_spotify(headers):
     return res.json()
 
 def get_cur_u_top_artists(headers):
-    params = {
-        'limit': 5,
-        'time_range': 'long_term'
-    }
+    top_artists = requests.get(
+        f'{SPOTIFY_BASE_URL}/me/top/artists',
+        params={
+            'limit': 10,
+            'time_range': 'long_term'
+        },
+        headers=headers
+    )
 
-    top_artists = requests.get(f'{SPOTIFY_BASE_URL}/me/top/artists?{urlencode(params)}', headers=headers)
     users_top = top_artists.json()
 
     artists_setup = []
@@ -198,7 +202,7 @@ def set_up_artists_TM(artists):
             spot_genres = artist.get('spotify_genres', [])
             genre_ids = []
 
-            if len(spot_genres) > 0:
+            if not spot_genres:
                 for genre in spot_genres:
                     genre_id = get_genre_id_TM(genre)
                     genre_ids.append(genre_id)
@@ -220,7 +224,13 @@ def set_up_artists_TM(artists):
 
 def get_genre_id_TM(genre):
 
-    res = requests.get(f'{TICKETMASTER_BASE_URL}/classifications.json?keyword={genre}&apikey={TICKETMASTER_API_KEY}')
+    res = requests.get(
+        f'{TICKETMASTER_BASE_URL}/classifications.json',
+        params={
+            'keyword': genre,
+            'apiKey': TICKETMASTER_API_KEY
+        }
+    )
 
     genre_id = res.json().get('_embedded', None).get('classifications', [{}])[0].get('segment', None).get('_embedded', None).get('genres', [{}])[0].get('id', None)
 
@@ -232,46 +242,103 @@ def get_genre_id_TM(genre):
 
 def get_attraction_id_TM(name, genres):
     if name:
-        name = name.replace(' ', '%20')
-        if len(genres) > 0:
-            if len(genres) > 1:
-                genres = ','.join(genres)
-            else:
-                genres = genres[0]
-            res = requests.get(f'{TICKETMASTER_BASE_URL}/attractions.json?keyword={name}&genreId={genres}&apikey={TICKETMASTER_API_KEY}')
+        if len(genres) != 0:
+            res = requests.get(
+                f'{TICKETMASTER_BASE_URL}/attractions.json',
+                params={
+                    'keyword': name,
+                    'genreId': genres,
+                    'apikey': TICKETMASTER_API_KEY
+                }
+            )
 
             if res.status_code == 200:
                 return res.json().get('_embedded', None).get('attractions', [{}])[0].get('id', None)
 
-        res = requests.get(f'{TICKETMASTER_BASE_URL}/attractions.json?keyword={name}&apikey={TICKETMASTER_API_KEY}')
+        res = requests.get(
+            f'{TICKETMASTER_BASE_URL}/attractions.json',
+            params={
+                'keyword': name,
+                'apikey': TICKETMASTER_API_KEY
+            }
+        )
 
         return res.json().get('_embedded', None).get('attractions', [{}])[0].get('id', None)
     return None
 
 def get_events_TM(artists):
-    # user = {
-    #     'postal_code': 9002,
-    #     'radius': 100,
-    #     'unit': 'miles'
-    # }
+    coords = get_lat_long(93035)
+    geo_point = get_geohash(coords)
 
-    # postal_code = user.get('postal_code', 9001)
-    # radius = user.get('radius', 50)
-    # unit = user.get('unit','miles')
+    if not artists:
+        return 'Could not get artists'
 
-    if artists:
-        events = []
-        for artist in artists:
-            attraction_id = artist.get('attraction_id', None)
+    events = []
+    for artist in artists:
 
-            if attraction_id:
-                # res = requests.get(f'{TICKETMASTER_BASE_URL}/events.json?attractionId={attraction_id}&postalCode={postal_code}&radius={radius}&unit={unit}&apikey={TICKETMASTER_API_KEY}')
-                res = requests.get(f'{TICKETMASTER_BASE_URL}/events.json?attractionId={attraction_id}&apikey={TICKETMASTER_API_KEY}')
-                print(res.json())
-        return events    
-    return None
+        attraction_id = artist.get('attraction_id')
+        artist_name = artist.get('name', None)
+
+        if not attraction_id:
+            print(f'No attraction ID for {artist_name}')
+            continue  
+
+        res = requests.get(
+            f'{TICKETMASTER_BASE_URL}/events.json',
+            params={
+                'attractionId': attraction_id,
+                'size': 1,
+                'geoPoint': geo_point,
+                'sort': 'distance,date,asc',
+                'apikey': TICKETMASTER_API_KEY
+            }
+        )
+
+        elems = res.json().get('page', {}).get('totalElements', 0)
+
+        if elems == 0:
+            print(f'No events found for {artist_name}')
+            continue
+        event_data = res.json().get('_embedded', {}).get('events', [])
+        venues = event_data[0].get('_embedded', {}).get('venues',[])
+        test_venue = venues[0].get('name', None)
+        print(artist_name, test_venue)
+
+    return events if events else None    
+    
 
 
 
 # ADD ARTIST TO DB USING ARTIST NAME, SPOT ID AND ATTRACTION ID
 
+# ==============================================================
+        # GEO/LOCATION PYTHON FUNCTIONS
+# ==============================================================
+
+def get_country_code(country):
+    country = pycountry.countries.get(name=country)
+    if country:
+            # ADD TO USER PROFILE
+        return country.alpha_2
+    else:
+        return 'Country not found'
+    
+def get_lat_long(zipcode):
+    user = {
+        'country_code': 'US',
+        'postal_code': zipcode
+    }
+
+    nomi = pgeocode.Nominatim(user.get('country_code', 'US'))
+    lat_long = nomi.query_postal_code(user.get('postal_code', '90001'))
+
+    lat = lat_long.get('latitude', None)
+    long = lat_long.get('longitude', None)
+
+    return (lat, long)
+
+def get_geohash(coords):
+    lat, long = coords
+    geohash = pgh.encode(latitude=lat, longitude=long, precision=9)
+
+    return geohash
