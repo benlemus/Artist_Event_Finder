@@ -2,12 +2,13 @@ import os
 import requests
 from flask import Flask, redirect, render_template, request, url_for, jsonify
 from dotenv import load_dotenv
-from urllib.parse import urlencode
 import base64
 import time
 import pgeocode
 import pycountry
 import pygeohash as pgh
+
+from models import db, connect_db, User
 
 load_dotenv()
 app = Flask(__name__)
@@ -18,6 +19,8 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+
+connect_db(app)
 
 SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI')
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
