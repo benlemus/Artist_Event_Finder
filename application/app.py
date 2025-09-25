@@ -1,14 +1,16 @@
 import os
 import requests
-from flask import Flask, redirect, render_template, request, url_for, jsonify
+from flask import Flask, redirect, render_template, request, url_for, session, g, flash
 from dotenv import load_dotenv
+from urllib.parse import urlencode
 import base64
 import time
 import pgeocode
-import pycountry
 import pygeohash as pgh
+from sqlalchemy.exc import IntegrityError
 
 from models import db, connect_db, User
+from forms import NewUserForm, LoginForm
 
 load_dotenv()
 app = Flask(__name__)
@@ -22,6 +24,8 @@ app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 connect_db(app)
 
+CUR_U_ID = 'user id'
+
 SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI')
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
@@ -34,7 +38,6 @@ SCOPE = 'user-read-private user-read-email user-top-read streaming'
 SPOTIFY_TOKEN_INFO = None
 
 TICKETMASTER_API_KEY = os.environ.get('TICKETMASTER_API_KEY')
-
 TICKETMASTER_BASE_URL = 'https://app.ticketmaster.com/discovery/v2/'
 
 
@@ -42,21 +45,78 @@ TICKETMASTER_BASE_URL = 'https://app.ticketmaster.com/discovery/v2/'
         # FLASK ROUTES
 # ==============================================================
 
+@app.before_request
+def add_user_to_g():
+    if CUR_U_ID in session:
+        g.user = User.query.filter_by(id=session[CUR_U_ID]).first()
+
+    else:
+        g.user = None
+
 @app.route('/')
 def homepage():
     global SPOTIFY_TOKEN_INFO
 
-    if SPOTIFY_TOKEN_INFO != None:
-        access_token = check_refesh_get_token_spotify()
+    if not g.user:
+        return render_template('homepage.html')
+    
+    user = User.query.filter_by(username=g.user.username).first()
 
-        headers = {'Authorization': f'Bearer {access_token}'}
+    if user:
+        if SPOTIFY_TOKEN_INFO != None:
+            access_token = check_refesh_get_token_spotify()
 
-        user = get_cur_u_spotify(headers)
-        artists = get_cur_u_top_artists(headers)
-        return render_template('homepage.html', user=user, artists=artists)
-    return render_template('homepage.html')
+            headers = {'Authorization': f'Bearer {access_token}'}
+            artists = get_cur_u_top_artists(headers)
+            return render_template('homepage.html', user=user, artists=artists)
+        return render_template('homepage.html', user=user)
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        auth = User.authenticate(form.username.data, form.password.data)
+
+        if auth:
+            do_login(auth)
+            print('logged in')
+
+            flash(f'Welcome, {auth.username}', 'success')
+            print('redirecting')
+            return redirect(url_for('homepage'))
+        
+        flash('Invalid username/password', 'danger')
+    return render_template('login.html', form=form)
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    form = NewUserForm()
+
+    if form.validate_on_submit():
+        try:
+            data = {field: form[field].data for field in form._fields if field != 'csrf_token'}
+            user = User.signup(**data)
+            db.session.commit()
+        except IntegrityError:
+            flash('Username already taken', 'danger')
+            return render_template('signup.html', form=form)
+
+        return  redirect(url_for('homepage'))
+
+    return render_template('signup.html', form=form)
+
+
+# --------------- SPOTIFY FLASK ROUTES ---------------
+
+@app.route('/logout')
+def logout():
+    global SPOTIFY_TOKEN_INFO
+    SPOTIFY_TOKEN_INFO = None
+    do_logout()
+    return redirect(url_for('homepage'))
+
+@app.route('/connect-spotify')
 def login_with_spotify():
     global SPOTIFY_TOKEN_INFO
     if SPOTIFY_TOKEN_INFO == None:
@@ -68,13 +128,6 @@ def login_with_spotify():
         }
         auth_url = f'{SPOTIFY_AUTH_URL}?{urlencode(params)}'
         return redirect(auth_url)
-    return redirect(url_for('homepage'))
-
-
-@app.route('/logout')
-def logout():
-    global SPOTIFY_TOKEN_INFO
-    SPOTIFY_TOKEN_INFO = None
     return redirect(url_for('homepage'))
 
 @app.route('/switch-accounts')
@@ -113,6 +166,18 @@ def callback():
             return redirect(url_for('homepage'))
         return 'No token'
     return 'No code'
+
+# ==============================================================
+        # PYTHON FUNCTIONS
+# ==============================================================
+def do_login(user):
+    session[CUR_U_ID] = user.id
+
+def do_logout():
+    if CUR_U_ID in session:
+        del session[CUR_U_ID]
+
+
 
 # ==============================================================
         # SPOTIFY PYTHON FUNCTIONS
@@ -154,6 +219,7 @@ def refresh_token_spotify(refresh_token):
 def check_refesh_get_token_spotify():
     global SPOTIFY_TOKEN_INFO
     info = SPOTIFY_TOKEN_INFO
+
     if info:
         if info['expires_at'] < int(time.time()):
             info = refresh_token_spotify(info['refresh_token'])
@@ -318,14 +384,6 @@ def get_events_TM(artists):
         # GEO/LOCATION PYTHON FUNCTIONS
 # ==============================================================
 
-def get_country_code(country):
-    country = pycountry.countries.get(name=country)
-    if country:
-            # ADD TO USER PROFILE
-        return country.alpha_2
-    else:
-        return 'Country not found'
-    
 def get_lat_long(zipcode):
     user = {
         'country_code': 'US',
@@ -333,10 +391,10 @@ def get_lat_long(zipcode):
     }
 
     nomi = pgeocode.Nominatim(user.get('country_code', 'US'))
-    lat_long = nomi.query_postal_code(user.get('postal_code', '90001'))
+    data = nomi.query_postal_code(user.get('postal_code', '90001'))
 
-    lat = lat_long.get('latitude', None)
-    long = lat_long.get('longitude', None)
+    lat = data.get('latitude', None)
+    long = data.get('longitude', None)
 
     return (lat, long)
 

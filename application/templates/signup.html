@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+<!-- title -->
+{% block title %}
+<title>Signup</title>
+{% endblock %}
+
+<!-- content -->
+{% block content %}
+<h1>New User Sign Up</h1>
+<div class="container">
+  <!-- form -->
+  <form action="" method="POST">
+    {% include 'form-temp.j2' %}
+    <button type="submit" class="btn btn-primary mt-3">Sign Up!</button>
+  </form>
+</div>
+{% endblock %}

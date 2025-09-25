@@ -15,6 +15,12 @@
     {% endblock %}
   </head>
   <body>
+    <!-- flask flash messages -->
+    <div class="container">
+      {% for category, message in get_flashed_messages(with_categories=True) %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
     {% block content %} {% endblock %}
     <!-- bootstrap -->
     <script
