@@ -68,8 +68,12 @@ def homepage():
 
             headers = {'Authorization': f'Bearer {access_token}'}
             artists = get_cur_u_top_artists(headers)
-            return render_template('homepage.html', user=user, artists=artists)
-        return render_template('homepage.html', user=user)
+            artists_1 = artists[0:5]
+            artists_2 = artists[5:]
+            
+            return render_template('user-homepage.html', user=user, artists_1=artists_1, artists_2=artists_2)
+        return(render_template('user-homepage.html', user=user))
+    return render_template('generic-homepage.html', user=user)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -80,10 +84,7 @@ def login():
 
         if auth:
             do_login(auth)
-            print('logged in')
-
             flash(f'Welcome, {auth.username}', 'success')
-            print('redirecting')
             return redirect(url_for('homepage'))
         
         flash('Invalid username/password', 'danger')
@@ -251,7 +252,8 @@ def get_cur_u_top_artists(headers):
         setup = {
             'name': artist.get('name', None),
             'spotify_id': artist.get('id'),
-            'spotify_genres': artist.get('genres')
+            'spotify_genres': artist.get('genres'),
+            'image_url': artist.get('images')[0].get('url')
         }
         artists_setup.append(setup)
 
@@ -269,6 +271,7 @@ def set_up_artists_TM(artists):
             name = artist.get('name', None)
             spot_id = artist.get('spotify_id', None)
             spot_genres = artist.get('spotify_genres', [])
+            image_url = artist.get('image_url', None)
             genre_ids = []
 
             if not spot_genres:
@@ -284,6 +287,7 @@ def set_up_artists_TM(artists):
                 'name': name,
                 'spotify_id': spot_id,
                 'spotify_genres': spot_genres,
+                'image_url': image_url,
                 'genre_ids': genre_ids,
                 'attraction_id': attraction_id
             }

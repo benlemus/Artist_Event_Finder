@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+<!-- title -->
+{% block title %}
+<title>Homepage</title>
+{% endblock %}
+
+<!-- content -->
+{% block content %}{% if artists_1 and artists_2 %}
+<h1>Hello {{user.username}}</h1>
+<a href="/logout">logout</a>
+<a href="/switch-accounts">Switch Accounts</a>
+
+<div class="container">
+  <ul>
+    {% for artist in artists %}
+    <li>{{artist}}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="container-fluid">
+  <h3>My Artists Events</h3>
+
+  <div class="container">
+    <div id="cardCarousel" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        <div class="carousel-item active">
+          <div class="card-group">
+            {% for artist in artists_1 %}
+            <div class="card">
+              <img src="{{artist.image_url}}" alt="" class="card-img-top" />
+              <div class="card-body">
+                <h5 class="card-title">{{artist.name}}</h5>
+                <p class="card-text">Event Info</p>
+                <a href="" class="btn btn-primary">Get tickets</a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="carousel-item">
+          <div class="card-group">
+            {%for artist in artists_2 %}
+            <div class="card">
+              <img src="{{artist.image_url}}" alt="" class="card-img-top" />
+              <div class="card-body">
+                <h5 class="card-title">{{artist.name}}</h5>
+                <p class="card-text">Event Info</p>
+                <a href="" class="btn btn-primary">Get tickets</a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <button
+        class="carousel-control-prev"
+        type="button"
+        data-bs-target="#cardCarousel"
+        data-bs-slide="prev"
+      >
+        <span class="carousel-control-prev-icon"></span>
+      </button>
+      <button
+        class="carousel-control-next"
+        type="button"
+        data-bs-target="#cardCarousel"
+        data-bs-slide="next"
+      >
+        <span class="carousel-control-next-icon"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<a href="/artist-search">Search Ticketmaster</a>
+{% else %}
+<h1>Hello {{user.username}}</h1>
+<div class="container-fluid">
+  <a href="/connect-spotify">Connect Spotify Account</a>
+  <a href="/logout">logout</a>
+</div>
+
+{% endif %} {% endblock %}
