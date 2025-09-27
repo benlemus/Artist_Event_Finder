@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+<!-- title -->
+{% block title %}
+<title>{{user.username}}</title>
+{% endblock %}
+
+<!-- content -->
+{% block content %}
+<a href="/">Home</a>
+<div class="container">
+  <h1>{{user.username}}</h1>
+</div>
+{% endblock %}

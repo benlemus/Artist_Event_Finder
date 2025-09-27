@@ -2,12 +2,13 @@
 
 <!-- title -->
 {% block title %}
-<title>Homepage</title>
+<title>Home</title>
 {% endblock %}
 
 <!-- content -->
-{% block content %}{% if artists_1 and artists_2 %}
+{% block content %}{% if all_artists %}
 <h1>Hello {{user.username}}</h1>
+<a href="/user/details/{{user.username}}">Account</a>
 <a href="/logout">logout</a>
 <a href="/switch-accounts">Switch Accounts</a>
 
@@ -27,7 +28,7 @@
       <div class="carousel-inner">
         <div class="carousel-item active">
           <div class="card-group">
-            {% for artist in artists_1 %}
+            {% for artist in all_artists[0] %}
             <div class="card">
               <img src="{{artist.image_url}}" alt="" class="card-img-top" />
               <div class="card-body">
@@ -41,7 +42,7 @@
         </div>
         <div class="carousel-item">
           <div class="card-group">
-            {%for artist in artists_2 %}
+            {%for artist in all_artists[1] %}
             <div class="card">
               <img src="{{artist.image_url}}" alt="" class="card-img-top" />
               <div class="card-body">
@@ -75,11 +76,12 @@
   </div>
 </div>
 
-<a href="/artist-search">Search Ticketmaster</a>
+<a href="/artist-event-search">Search Ticketmaster</a>
 {% else %}
 <h1>Hello {{user.username}}</h1>
 <div class="container-fluid">
-  <a href="/connect-spotify">Connect Spotify Account</a>
+  <a href="/user/details/{{user.username}}">Account</a>
+  <a href="/connect-spotify">Connect Spotify</a>
   <a href="/logout">logout</a>
 </div>
 

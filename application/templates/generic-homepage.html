@@ -2,12 +2,103 @@
 
 <!-- title -->
 {% block title %}
-<title>Homepage</title>
+<title>Home</title>
 {% endblock %}
 
 <!-- content -->
 {% block content %}
-<h1>Hello, you should login for a better experience</h1>
-<a href="/login">Login</a>
-<a href="/signup">Create an Account</a>
+
+<div class="container">
+  <h3>Hello, you should login for a personal experience</h3>
+  <!-- form -->
+  <form action="{{url_for('login')}}" method="POST">
+    {% include 'form-temp.j2' %}
+    <button type="submit" class="btn btn-primary mt-3">Log in!</button>
+  </form>
+  <a href="{{url_for('signup')}}">Not a user? Become one</a>
+</div>
+
+<div class="container">
+  <div id="cardCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner">
+      <div class="carousel-item active">
+        <div class="card-group">
+          {% for event in all_events[0] %}
+          <div class="card">
+            <img src="{{event.image}}" alt="" class="card-img-top" />
+            <div class="card-body">
+              <h5 class="card-title">{{event.name}}</h5>
+              <p class="card-text">{{event.location}}</p>
+              <p class="card-text">{{event.date}}</p>
+              <a href="" class="btn btn-primary">Get tickets</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="carousel-item">
+        <div class="card-group">
+          {% for event in all_events[1] %}
+          <div class="card">
+            <img src="{{event.image}}" alt="" class="card-img-top" />
+            <div class="card-body">
+              <h5 class="card-title">{{event.name}}</h5>
+              <p class="card-text">{{event.location}}</p>
+              <p class="card-text">{{event.date}}</p>
+              <a href="" class="btn btn-primary">Get tickets</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="carousel-item">
+        <div class="card-group">
+          {% for event in all_events[2] %}
+          <div class="card">
+            <img src="{{event.image}}" alt="" class="card-img-top" />
+            <div class="card-body">
+              <h5 class="card-title">{{event.name}}</h5>
+              <p class="card-text">{{event.location}}</p>
+              <p class="card-text">{{event.date}}</p>
+              <a href="" class="btn btn-primary">Get tickets</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="carousel-item">
+        <div class="card-group">
+          {% for event in all_events[3] %}
+          <div class="card">
+            <img src="{{event.image}}" alt="" class="card-img-top" />
+            <div class="card-body">
+              <h5 class="card-title">{{event.name}}</h5>
+              <p class="card-text">{{event.location}}</p>
+              <p class="card-text">{{event.date}}</p>
+              <a href="" class="btn btn-primary">Get tickets</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <button
+      class="carousel-control-prev"
+      type="button"
+      data-bs-target="#cardCarousel"
+      data-bs-slide="prev"
+    >
+      <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button
+      class="carousel-control-next"
+      type="button"
+      data-bs-target="#cardCarousel"
+      data-bs-slide="next"
+    >
+      <span class="carousel-control-next-icon"></span>
+    </button>
+  </div>
+</div>
 {% endblock %}

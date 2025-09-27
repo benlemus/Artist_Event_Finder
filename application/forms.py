@@ -25,7 +25,6 @@ class NewUserForm(FlaskForm):
         return country_choices
     
     def validate_zipcode(self, zipcode):
-        print(self.country.data)
         if not check_zipcode(zipcode.data, self.country.data):
             raise ValidationError('Invalid zipcode for the selected country.')
 
@@ -51,7 +50,6 @@ def check_zipcode(zipcode, country):
     cc = load_cc.get(country) 
     nomi = pgeocode.Nominatim(cc)
     data = nomi.query_postal_code(zipcode)
-    print(data)
 
     if data is not None and not pandas.isna(data['latitude']) and not pandas.isna(data['longitude']):
         return True
