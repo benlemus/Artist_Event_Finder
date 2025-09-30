@@ -14,6 +14,7 @@ class SpotifyAPI:
         self.scope = scope
 
 # TOKENS/ GENERIC SPOTIFY API
+
     def auth_token_header(self):
         auth_str = f'{self.client_id}:{self.client_secret}'
         auth_bytes = auth_str.encode('utf-8')
@@ -54,7 +55,6 @@ class SpotifyAPI:
                 info = self.refresh_token(info['refresh_token'])
                 if info:
                     info['expires_at'] = int(time.time() + info['expires_in'])
-                    # SPOTIFY_TOKEN_INFO = info
                 return None
         return info['access_token']
     
@@ -107,14 +107,14 @@ class SpotifyAPI:
         users_top = top_artists.json()
 
         artists_setup = []
-        for artist in users_top.get('items', None):
-
+        
+        for artist in users_top.get('items', {}): 
             setup = {
                 'name': artist.get('name', None),
                 'spotify_id': artist.get('id'),
                 'spotify_genres': artist.get('genres'),
                 'image_url': artist.get('images')[0].get('url')
             }
-            artists_setup.append(setup)
+            artists_setup.append(setup)     
 
         return artists_setup

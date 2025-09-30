@@ -81,8 +81,6 @@ class TicketmasterAPI:
         return None
 
     def get_events(self, artists, geohash):
-        # coords = get_lat_long(93035)
-        # geo_point = get_geohash(coords)
         if not artists:
             return 'Could not get artists'
 

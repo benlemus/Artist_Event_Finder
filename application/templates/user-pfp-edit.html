@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+<!-- title -->
+{% block title %}
+<title>Change Profile Picture</title>
+{% endblock %}
+
+<!-- content -->
+{% block content %}
+<div class="container">
+  <img src="{{u.profile_img}}" alt="" class="mx-auto d-block" />
+
+  <div class="container">
+    <!-- form -->
+    <form action="" method="POST">
+      {% include 'form-temp.j2' %}
+      <button type="submit" class="btn btn-primary mt-3">Confirm Change</button>
+      <a href="/user/details/{{u.username}}" class="btn btn-danger mt-3 ms-2"
+        >Cancel</a
+      >
+    </form>
+  </div>
+</div>
+{% endblock %}

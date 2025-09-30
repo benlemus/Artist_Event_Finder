@@ -8,7 +8,51 @@
 <!-- content -->
 {% block content %}
 <a href="/">Home</a>
-<div class="container">
-  <h1>{{user.username}}</h1>
+<div class="container-fluid">
+  <div class="container">
+    <div class="card mb-3">
+      <div class="row g-0">
+        <div class="col-md-4">
+          <div class="pfp-container">
+            <img src="{{user.profile_img}}" alt="" />
+            <div class="pfp-text">
+              <a href="/user/edit-pfp/{{user.username}}">Edit Photo</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="card-body">
+            <h3 class="card-title">
+              {{user.name}}
+              <small class="text-body-secondary">({{user.username}})</small>
+            </h3>
+            <h5 class="card-text">
+              <small class="text-body-secondary">{{user.email}}</small>
+            </h5>
+            <h5 class="card-text">
+              <small class="text-body-secondary">{{user.country}}</small>
+            </h5>
+            <h5 class="card-text">
+              <small class="text-body-secondary">{{user.zipcode}}</small>
+            </h5>
+
+            <h4 class="card-text mt-3">{{user.bio}}</h4>
+
+            <a
+              href="/user/details/edit/{{user.username}}"
+              class="btn btn-primary mt-4"
+              >Edit Details</a
+            >
+            <a
+              href="/user/password/edit/{{user.username}}"
+              class="btn btn-primary mt-4 ms-2"
+              >Change Password</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
 {% endblock %}

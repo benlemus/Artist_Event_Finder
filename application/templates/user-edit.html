@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+<!-- title -->
+{% block title %}
+<title>Edit Details</title>
+{% endblock %}
+
+<!-- content -->
+{% block content %}
+<h1>Edit Details</h1>
+<div class="container">
+  <!-- form -->
+  <form action="" method="POST">
+    {% include 'form-temp.j2' %}
+    <button type="submit" class="btn btn-primary mt-3">Confirm Edit</button>
+    <a href="/user/details/{{u.username}}" class="btn btn-danger mt-3 ms-2"
+      >Cancel</a
+    >
+  </form>
+</div>
+
+{% endblock %}

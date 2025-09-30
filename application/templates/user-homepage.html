@@ -6,29 +6,84 @@
 {% endblock %}
 
 <!-- content -->
-{% block content %}{% if all_artists %}
-<h1>Hello {{user.username}}</h1>
-<a href="/user/details/{{user.username}}">Account</a>
-<a href="/logout">logout</a>
-<a href="/switch-accounts">Switch Accounts</a>
+{% block content %}
 
-<div class="container">
-  <ul>
-    {% for artist in artists %}
-    <li>{{artist}}</li>
-    {% endfor %}
-  </ul>
+<!-- Account Details -->
+<div class="container-fluid">
+  <h1>Hello {{user.username}}</h1>
+  <a href="/user/details/{{user.username}}">Account</a>
+  <!-- check spotify login -->
+  {% if spot_login %}
+  <a href="/switch-accounts">Switch Accounts</a>
+  {% else %}
+  <a href="/connect-spotify">Connect Spotify</a>
+  {% endif %}
+  <a href="/logout">logout</a>
 </div>
 
 <div class="container-fluid">
-  <h3>My Artists Events</h3>
+  {% if top_artists %}
+  <div class="container row-title mb-4">
+    <h2 class="text-start">Top Artists</h2>
+    <div class="border-bottom border-black"></div>
+  </div>
+  <div class="container row-container text-center">
+    <div class="row justify-content-md-center">
+      {% for artist in top_artists %}
+      <div class="col col-sm-6 col-lg-2">
+        <div>
+          <span class="align-bottom fw-bold fs-1">{{artist['id']}}.</span>
+          <img src="{{artist['img']}}" alt="" style="max-height: 200px" />
+        </div>
+        <p class="fs-4 ms-4">{{artist['name']}}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="container row-title mb-4">
+      <h2 class="text-start">
+        Top Artists <small>(Connect Spotify to see)</small>
+      </h2>
+      <div class="border-bottom border-black"></div>
+    </div>
+    <div class="container row-container text-center">
+      <div class="row justify-content-md-center">
+        {% for artist in range(5) %}
+        <div class="col col-sm-6 col-lg-2">
+          <div>
+            <span class="align-bottom fw-bold fs-1"
+              >{{ loop.index }}{{ item }}.</span
+            >
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s"
+              alt=""
+              style="max-height: 200px"
+            />
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
 
-  <div class="container">
-    <div id="cardCarousel" class="carousel slide" data-bs-ride="carousel">
+  <!-- top artist events -->
+
+  <div class="container row-title mb-4">
+    <h2 class="text-start">My Top Artist's Events</h2>
+    <div class="border-bottom border-black"></div>
+  </div>
+  <div class="container row-container">
+    <div
+      id="topArtistCardCarousel"
+      class="carousel slide"
+      data-bs-ride="carousel"
+    >
       <div class="carousel-inner">
-        <div class="carousel-item active">
+        {% if all_artists %} {% for artist_group in all_artists %}
+        <div class="carousel-item {% if loop.first %} active {% endif %}">
           <div class="card-group">
-            {% for artist in all_artists[0] %}
+            {% for artist in artist_group %}
             <div class="card">
               <img src="{{artist.image_url}}" alt="" class="card-img-top" />
               <div class="card-body">
@@ -40,13 +95,18 @@
             {% endfor %}
           </div>
         </div>
-        <div class="carousel-item">
+        {% endfor %} {% else %} {% for artist_group in range(2) %}
+        <div class="carousel-item {% if loop.first %} active {% endif %}">
           <div class="card-group">
-            {%for artist in all_artists[1] %}
+            {% for artist in range(5) %}
             <div class="card">
-              <img src="{{artist.image_url}}" alt="" class="card-img-top" />
+              <img
+                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s"
+                alt=""
+                class="card-img-top"
+              />
               <div class="card-body">
-                <h5 class="card-title">{{artist.name}}</h5>
+                <h5 class="card-title">Artist Name</h5>
                 <p class="card-text">Event Info</p>
                 <a href="" class="btn btn-primary">Get tickets</a>
               </div>
@@ -54,12 +114,13 @@
             {% endfor %}
           </div>
         </div>
+        {% endfor %} {% endif %}
       </div>
 
       <button
         class="carousel-control-prev"
         type="button"
-        data-bs-target="#cardCarousel"
+        data-bs-target="#topArtistCardCarousel"
         data-bs-slide="prev"
       >
         <span class="carousel-control-prev-icon"></span>
@@ -67,22 +128,68 @@
       <button
         class="carousel-control-next"
         type="button"
-        data-bs-target="#cardCarousel"
+        data-bs-target="#topArtistCardCarousel"
         data-bs-slide="next"
       >
         <span class="carousel-control-next-icon"></span>
       </button>
     </div>
   </div>
-</div>
 
-<a href="/artist-event-search">Search Ticketmaster</a>
-{% else %}
-<h1>Hello {{user.username}}</h1>
-<div class="container-fluid">
-  <a href="/user/details/{{user.username}}">Account</a>
-  <a href="/connect-spotify">Connect Spotify</a>
-  <a href="/logout">logout</a>
-</div>
+  <a href="/artist-event-search">Search Ticketmaster</a>
 
-{% endif %} {% endblock %}
+  <!-- popular events -->
+  <div class="container row-title mb-4">
+    <h2 class="text-start">Popular Events</h2>
+    <div class="border-bottom border-black"></div>
+  </div>
+  <div class="container row-container">
+    <div
+      id="popularCardCarousel"
+      class="carousel slide"
+      data-bs-ride="carousel"
+    >
+      <div class="carousel-inner">
+        {% for event_group in all_events %}
+        <div class="carousel-item {% if loop.first %} active {% endif %}">
+          <div class="card-group">
+            {% for event in event_group %}
+            <div class="card">
+              <img
+                src="{{event.image}}"
+                alt=""
+                class="card-img-top"
+                style="max-height: 230px"
+              />
+              <div class="card-body">
+                <h5 class="card-title">{{event.name}}</h5>
+                <p class="card-text">{{event.location}}</p>
+                <p class="card-text">{{event.date}}</p>
+                <a href="" class="btn btn-primary">Get tickets</a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <button
+        class="carousel-control-prev"
+        type="button"
+        data-bs-target="#popularCardCarousel"
+        data-bs-slide="prev"
+      >
+        <span class="carousel-control-prev-icon"></span>
+      </button>
+      <button
+        class="carousel-control-next"
+        type="button"
+        data-bs-target="#popularCardCarousel"
+        data-bs-slide="next"
+      >
+        <span class="carousel-control-next-icon"></span>
+      </button>
+    </div>
+  </div>
+  {% endblock %}
+</div>

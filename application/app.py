@@ -5,10 +5,11 @@ from dotenv import load_dotenv
 import redis
 import pgeocode
 import pygeohash as pgh
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, PendingRollbackError
+from validators import url as validate_url
 
 from models import db, connect_db, User
-from forms import NewUserForm, LoginForm
+from forms import NewUserForm, LoginForm, EditUserForm, ChangePasswordForm, ChangePfpForm
 from ticketmaster import TicketmasterAPI
 from spotify import SpotifyAPI
 
@@ -48,10 +49,11 @@ def add_user_to_g():
 
 @app.route('/')
 def homepage():
+    events = ticketmaster.get_generic_events()
+    all_events = [events[0:5], events[5:10], events[10:15], events[15:]]
+
     if not g.user:
         form = LoginForm()
-        events = ticketmaster.get_generic_events()
-        all_events = [events[0:5], events[5:10], events[10:15], events[15:]]
         return render_template('generic-homepage.html', form=form, all_events=all_events)
     
     user = User.query.filter_by(username=g.user.username).first()
@@ -61,16 +63,23 @@ def homepage():
             access_token = spotify.check_refesh_get_token(token_info=session['spotify_token'])
             headers = {'Authorization': f'Bearer {access_token}'}
             artists = spotify.get_cur_u_top_artists(headers)
-            all_artists = [artists[0:5], artists[5:]]
-            print(all_artists)
-            return render_template('user-homepage.html', user=user, all_artists=all_artists)
-        return(render_template('user-homepage.html', user=user))
-    return render_template('generic-homepage.html')
+
+            if artists:
+                artist_num = 1
+                top_artists = []
+                for artist in artists[0:5]:
+                    top_artists.append({'id': artist_num, 'name': artist.get('name', 'Artist Name'), 'img': artist.get('image_url', 'Artist Image')})
+                    artist_num += 1
+
+                all_artists = [artists[0:5], artists[5:]]
+                return render_template('user-homepage.html', user=user, all_artists=all_artists, all_events=all_events, top_artists=top_artists, spot_login=True)
+            
+        return render_template('user-homepage.html', user=user, all_events=all_events)
+    return render_template('generic-homepage.html', all_events=all_events)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
-
     if form.validate_on_submit():
         auth = User.authenticate(form.username.data, form.password.data)
 
@@ -80,7 +89,7 @@ def login():
             return redirect(url_for('homepage'))
         
         flash('Invalid username/password', 'danger')
-    return render_template('login.html', form=form)
+    return redirect(url_for('homepage'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -88,12 +97,16 @@ def signup():
 
     if form.validate_on_submit():
         try:
-            data = {field: form[field].data for field in form._fields if field != 'csrf_token'}
+            data = {field: form[field].data for field in form._fields if field != 
+            'csrf_token'}
+            if not validate_url(data['profile_img']):
+                data['profile_img'] = 'https://cdn-icons-png.freepik.com/512/5997/5997002.png'
+
             user = User.signup(**data)
             db.session.commit()
             do_login(user)
         except IntegrityError:
-            flash('Username already taken', 'danger')
+            flash('Username or email already in use.', 'danger')
             return render_template('signup.html', form=form)
 
         return  redirect(url_for('homepage'))
@@ -110,6 +123,77 @@ def user_details(username):
 
     return render_template('user-details.html', user=user)
 
+@app.route('/user/details/edit/<username>', methods=['GET', 'POST'])
+def edit_user(username):
+    u = User.query.filter_by(username=username).first()
+
+    form = EditUserForm(obj=u)
+
+    if form.validate_on_submit():
+        try:
+            data = {field: form[field].data for field in form._fields if field != 'csrf_token'}
+            user_id = u.id
+            update = User.update_details(user_id, **data)
+            db.session.commit()
+            
+        except PendingRollbackError:
+            db.session.rollback()
+            flash('An error occured', 'danger')
+            return render_template('user-edit.html', form=form, u=u)
+        except IntegrityError as e:
+            db.session.rollback()
+            error_message = str(e.orig).lower()
+            if 'username' in error_message and 'unique' in error_message:
+                flash('Username already in use.', 'danger')
+            elif 'email' in error_message and 'unique' in error_message:
+                flash('Email already in use.', 'danger')
+            return render_template('user-edit.html', form=form, u=u)
+
+    return render_template('user-edit.html', form=form, u=u)
+
+@app.route('/user/password/edit/<username>', methods=['GET', 'POST'])
+def change_password(username):
+    u = User.query.filter_by(username=username).first()
+    
+    form = ChangePasswordForm()
+
+    if form.validate_on_submit():
+        auth = User.authenticate(u.username, form.password.data)
+
+        if auth:
+            update = User.update_password(u.username, form.new_password.data)
+            db.session.commit()
+
+            if update:
+                flash('Password updated!', 'success')
+                return redirect(f'/user/details/{u.username}')
+            
+        flash('Could not update password', 'danger')
+        return redirect(f'/user/details/{u.username}')
+    
+    return render_template('user-password-edit.html', form=form, u=u)
+
+@app.route('/user/edit-pfp/<username>', methods=['GET', 'POST'])
+def change_pfp(username):
+    u = User.query.filter_by(username=username).first()
+
+    form = ChangePfpForm()
+
+    if form.validate_on_submit():
+        profile_img = form.profile_img.data
+        if not validate_url(profile_img):
+            profile_img = 'https://cdn-icons-png.freepik.com/512/5997/5997002.png'
+        update = User.update_pfp(u.username, profile_img)
+        db.session.commit()
+
+        if update:
+            flash('Profile Picture Updated!', 'success')
+            return redirect(f'/user/details/{u.username}')
+        
+        flash('could not update profile picture', 'danger')
+        return redirect(f'/user/edit-pfp/{u.username}')
+    
+    return render_template('user-pfp-edit.html', form=form, u=u)
 # --------------- SPOTIFY FLASK ROUTES ---------------
 
 @app.route('/logout')
