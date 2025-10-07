@@ -112,7 +112,7 @@ class SpotifyAPI:
             setup = {
                 'name': artist.get('name', None),
                 'spotify_id': artist.get('id'),
-                'spotify_genres': artist.get('genres'),
+                'spotify_url': artist.get('external_urls', {}).get('spotify', None),
                 'image_url': artist.get('images')[0].get('url')
             }
             artists_setup.append(setup)     

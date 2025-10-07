@@ -22,6 +22,7 @@
 </div>
 
 <div class="container-fluid">
+  <!-- Show Top Artists -->
   {% if top_artists %}
   <div class="container row-title mb-4">
     <h2 class="text-start">Top Artists</h2>
@@ -67,6 +68,13 @@
     {% endif %}
   </div>
 
+  <!-- featured events -->
+  <div class="container row-title mb-4">
+    <h2 class="text-start">Picked Just For You</h2>
+    <div class="border-bottom border-black"></div>
+  </div>
+  <div class="contaier" id="featured-events" style="min-height: 400px"></div>
+
   <!-- top artist events -->
 
   <div class="container row-title mb-4">
@@ -79,43 +87,7 @@
       class="carousel slide"
       data-bs-ride="carousel"
     >
-      <div class="carousel-inner">
-        {% if all_artists %} {% for artist_group in all_artists %}
-        <div class="carousel-item {% if loop.first %} active {% endif %}">
-          <div class="card-group">
-            {% for artist in artist_group %}
-            <div class="card">
-              <img src="{{artist.image_url}}" alt="" class="card-img-top" />
-              <div class="card-body">
-                <h5 class="card-title">{{artist.name}}</h5>
-                <p class="card-text">Event Info</p>
-                <a href="" class="btn btn-primary">Get tickets</a>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-        {% endfor %} {% else %} {% for artist_group in range(2) %}
-        <div class="carousel-item {% if loop.first %} active {% endif %}">
-          <div class="card-group">
-            {% for artist in range(5) %}
-            <div class="card">
-              <img
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s"
-                alt=""
-                class="card-img-top"
-              />
-              <div class="card-body">
-                <h5 class="card-title">Artist Name</h5>
-                <p class="card-text">Event Info</p>
-                <a href="" class="btn btn-primary">Get tickets</a>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-        {% endfor %} {% endif %}
-      </div>
+      <div class="carousel-inner" id="top-artist-list"></div>
 
       <button
         class="carousel-control-prev"
@@ -135,8 +107,6 @@
       </button>
     </div>
   </div>
-
-  <a href="/artist-event-search">Search Ticketmaster</a>
 
   <!-- popular events -->
   <div class="container row-title mb-4">

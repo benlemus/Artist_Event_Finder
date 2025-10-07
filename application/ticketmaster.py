@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime
+from models import Event, Artist
 
 class TicketmasterAPI:
     def __init__(self, api_key, base_url="https://app.ticketmaster.com/discovery/v2"):
@@ -12,63 +13,28 @@ class TicketmasterAPI:
             for artist in artists:
                 name = artist.get('name', None)
                 spot_id = artist.get('spotify_id', None)
-                spot_genres = artist.get('spotify_genres', [])
+                spot_url = artist.get('spotify_url', None)
                 image_url = artist.get('image_url', None)
-                genre_ids = []
 
-                if not spot_genres:
-                    for genre in spot_genres:
-                        genre_id = self.get_genre_id(genre)
-                        genre_ids.append(genre_id)
-
-                attraction_id = self.get_attraction_id(name, genre_ids)
+                attraction_id = self.get_attraction_id(name, spot_url)
 
                 if attraction_id == None:
-                    return 'Could not get artist TM ID'
+                    print(f'Could not get artist TM ID for {name}')
+                    continue
+
                 setup = {
                     'name': name,
                     'spotify_id': spot_id,
-                    'spotify_genres': spot_genres,
+                    'spotify_url': spot_url,
                     'image_url': image_url,
-                    'genre_ids': genre_ids,
                     'attraction_id': attraction_id
                 }
                 artists_setup.append(setup)
             return artists_setup 
         return None
 
-    def get_genre_id(self, genre):
-        res = requests.get(
-            f'{self.base_url}/classifications.json',
-            params={
-                'keyword': genre,
-                'apiKey': self.api_key
-            }
-        )
-
-        genre_id = res.json().get('_embedded', None).get('classifications', [{}])[0].get('segment', None).get('_embedded', None).get('genres', [{}])[0].get('id', None)
-
-        if not genre_id:
-            return None
-        
-        return genre_id
-
-
-    def get_attraction_id(self, name, genres):
+    def get_attraction_id(self, name, spotify_url):
         if name:
-            if len(genres) != 0:
-                res = requests.get(
-                    f'{self.base_url}/attractions.json',
-                    params={
-                        'keyword': name,
-                        'genreId': genres,
-                        'apikey': self.api_key
-                    }
-                )
-
-                if res.status_code == 200:
-                    return res.json().get('_embedded', None).get('attractions', [{}])[0].get('id', None)
-
             res = requests.get(
                 f'{self.base_url}/attractions.json',
                 params={
@@ -77,70 +43,121 @@ class TicketmasterAPI:
                 }
             )
 
-            return res.json().get('_embedded', None).get('attractions', [{}])[0].get('id', None)
+            data = res.json()
+
+            artists = data.get('_embedded', {}).get('attractions', [{}])
+
+            for artist in artists:
+                tm_spot_url = artist.get('externalLinks', {}).get('spotify', [{}])[0].get('url', None)
+
+                if spotify_url == tm_spot_url:
+                    return artist.get('id', None)
         return None
 
-    def get_events(self, artists, geohash):
+
+    def get_user_events(self, artists, geohash=None):
         if not artists:
             return 'Could not get artists'
 
         events = []
-        for artist in artists:
-
-            attraction_id = artist.get('attraction_id')
-            artist_name = artist.get('name', None)
-
-            if not attraction_id:
-                print(f'No attraction ID for {artist_name}')
-                continue  
-
-            res = requests.get(
-                f'{self.base_url}/events.json',
-                params={
-                    'attractionId': attraction_id,
-                    'size': 1,
-                    'geoPoint': geohash,
-                    'sort': 'distance,date,asc',
-                    'apikey': self.api_key
-                }
-            )
-
-            elems = res.json().get('page', {}).get('totalElements', 0)
-
-            if elems == 0:
-                print(f'No events found for {artist_name}')
-                continue
-            event_data = res.json().get('_embedded', {}).get('events', [])
-            venues = event_data[0].get('_embedded', {}).get('venues',[])
-            test_venue = venues[0].get('name', None)
-            print(artist_name, test_venue)
-
-        return events if events else None    
-        
-    def get_generic_events(self):
-        events = []
-
+        seen_events = []
         seen_artists = []
         num_events = 20
         page = 0
 
+        artist_attraction_ids = [artist.attraction_id for artist in artists]
+
         while len(events) < num_events:
-            res = requests.get(
-                f'{self.base_url}/events.json',
-                params={
-                    'classificationName': 'music',
-                    'sort': 'relevance,desc',
-                    'page': page,
+
+            if len(seen_artists) == 0:
+                artist_attraction_ids = [artist.attraction_id for artist in artists]
+            else:
+                for artist in seen_artists:
+                    if artist:
+                        cur_a = Artist.query.filter_by(name=artist).first()
+                        seen_artists.remove(artist)
+                        artist_attraction_ids.remove(cur_a.attraction_id)
+
+            if geohash:
+                params = {
+                    'attractionId': artist_attraction_ids,
+                    'geoPoint': geohash,
+                    'sort': 'distance,date,asc',
                     'apikey': self.api_key
                 }
-            )
+            else:
+                params = {
+                    'attractionId': artist_attraction_ids,
+                    'sort': 'relevance,desc',
+                    'apikey': self.api_key
+                }
+
+            res = requests.get(
+                f'{self.base_url}/events.json', params=params)
+            
+            event_data = res.json().get('_embedded', {}).get('events', [{}])
+
+            for event in event_data:
+
+                if len(events) >= num_events:
+                    break
+
+                event_id = event.get('id', None)
+
+                attractions = event.get('_embedded', {}).get('attractions', [{}])
+
+                for attraction in attractions:
+                    attraction_name = attraction.get('name', None)
+                    if attraction_name in [artist.name for artist in artists]:
+                        event_artist = attraction_name
+
+                if not event_id:
+                    print('could not get event id')
+                    continue
+
+                if not event_artist:
+                    print('could not get artist name')
+                    continue
+
+                if event_id in seen_events:
+                    continue
+                
+                if event_artist in seen_artists:
+                    continue
+                
+                seen_artists.append(event_artist)
+                seen_events.append(event_id)
+                new_event = Event(event)
+                events.append(new_event.create_event())
+            page += 1                
+
+        return events if events else None
+ 
+        
+    def get_generic_events(self):
+        events = []
+        seen_artists = []    
+        num_events = 20
+        page = 0
+
+        while len(events) < num_events:
+
+            res = requests.get(
+                f'{self.base_url}/events.json', 
+                    params={
+                        'classificationName': 'music',
+                        'sort': 'relevance,desc',
+                        'page': page,
+                        'apikey': self.api_key
+                    }
+                )
 
             data = res.json().get('_embedded', {}).get('events', [{}])
 
             for event in data:
                 if len(events) >= num_events:
                     break
-                
+
                 artist = event.get('_embedded', {}).get('attractions', [{}])[0].get('name')
 
                 if artist in seen_artists:
@@ -168,5 +185,7 @@ class TicketmasterAPI:
 
                 seen_artists.append(artist)
                 events.append(e_setup)
+  
+
             page += 1 
         return events

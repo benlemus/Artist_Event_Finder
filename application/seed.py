@@ -1,7 +1,8 @@
-from models import User
+from models import User, Artist, UserArtist
 from app import db, app
 
 with app.app_context():
+
     db.drop_all()
     db.create_all()
 
@@ -65,3 +66,13 @@ with app.app_context():
 #     SUBSTRING(profile_img FROM 1 FOR 20) AS profile_img,
 #     created_at
 # FROM users;
+
+# CREATE VIEW artists_truncated AS
+# SELECT
+#     id,
+#     name,
+#     spotify_id,
+#     SUBSTRING(spotify_url FROM 1 FOR 10) AS spotify_url,
+#     SUBSTRING(image FROM 1 FOR 10) AS image,
+#     attraction_id
+# FROM artists;

@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_bcrypt import Bcrypt
 
 import json
@@ -20,7 +20,9 @@ class User(db.Model):
     zipcode = db.Column(db.Text, nullable=False)
     bio = db.Column(db.Text, nullable=True)
     profile_img = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now())
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    artists = db.relationship('Artist', secondary='users_artists', backref='users', lazy='dynamic')
 
     @classmethod 
     def signup(cls, name, username, email, password, country, zipcode, bio, profile_img):
@@ -61,12 +63,12 @@ class User(db.Model):
         user = cls.query.filter_by(id=user_id).first()
 
         if user:
-            user.name = name,
-            user.username = username,
+            user.name = name
+            user.username = username
             user.email = email
-            user.country = country,
-            user.country_code = code,
-            user.zipcode = zipcode,
+            user.country = country
+            user.country_code = code
+            user.zipcode = zipcode
             user.bio = bio       
             return user
         return False
@@ -89,6 +91,55 @@ class User(db.Model):
             user.profile_img = profile_img
             return user
         return False
+    
+class Artist(db.Model):
+    __tablename__ = 'artists'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, nullable=False)
+    spotify_id = db.Column(db.Text, nullable=False, unique=True)
+    spotify_url = db.Column(db.Text, nullable=False, unique=True)
+    image = db.Column(db.Text, nullable=True)
+    attraction_id = db.Column(db.Text, nullable=False, unique=True)
+
+    def get_by_order(self):
+        pass
+
+class UserArtist(db.Model):
+    __tablename__ = 'users_artists'
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+
+    artist_id = db.Column(db.Integer, db.ForeignKey('artists.id', ondelete='CASCADE'), primary_key=True)
+
+class Event():
+    def __init__(self, event):
+        self.event = event
+    
+    def create_event(self):
+        artist = self.event.get('_embedded', {}).get('attractions', [{}])[0].get('name')
+        name = self.event.get('name', 'could not get name')
+        event_id = self.event.get('id', 'could not get event id')
+        url = self.event.get('url', 'could not get event url')
+        image = self.event.get('images', [{}])[0].get('url', 'could not get image')
+        date = self.event.get('dates', {}).get('start', {}).get('dateTime', None)
+        locations = self.event.get('_embedded', {}).get('venues', [{}])[0]
+        location = f"{locations.get('city', {}).get('name', 'could not get city name')}, {locations.get('state', {}).get('name', 'could not get state name')}"
+
+        if date:
+            formated_date = datetime.fromisoformat(date[:-1] + '+00:00').strftime('%B %d %Y')
+        else:
+            formated_date = 'Could not get date'
+
+        return {
+            'artist': artist,
+            'name': name,
+            'event_id': event_id,
+            'url': url,
+            'image': image,
+            'date': formated_date,
+            'location': location
+        }
 
 def connect_db(app):
     db.app = app
@@ -98,3 +149,4 @@ def connect_db(app):
 def load_country_codes(file_path='data/countries.json'):
     with open(file_path, 'r') as file:
         return json.load(file)
+

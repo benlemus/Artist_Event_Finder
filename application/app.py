@@ -8,7 +8,7 @@ import pygeohash as pgh
 from sqlalchemy.exc import IntegrityError, PendingRollbackError
 from validators import url as validate_url
 
-from models import db, connect_db, User
+from models import db, connect_db, User, Artist, UserArtist
 from forms import NewUserForm, LoginForm, EditUserForm, ChangePasswordForm, ChangePfpForm
 from ticketmaster import TicketmasterAPI
 from spotify import SpotifyAPI
@@ -50,32 +50,38 @@ def add_user_to_g():
 @app.route('/')
 def homepage():
     events = ticketmaster.get_generic_events()
-    all_events = [events[0:5], events[5:10], events[10:15], events[15:]]
+    all_generic_events = [events[0:5], events[5:10], events[10:15], events[15:]]
 
     if not g.user:
         form = LoginForm()
-        return render_template('generic-homepage.html', form=form, all_events=all_events)
+        return render_template('generic-homepage.html', form=form, all_events=all_generic_events)
     
     user = User.query.filter_by(username=g.user.username).first()
 
     if user:
         if session.get('spotify_token', None):
-            access_token = spotify.check_refesh_get_token(token_info=session['spotify_token'])
-            headers = {'Authorization': f'Bearer {access_token}'}
-            artists = spotify.get_cur_u_top_artists(headers)
+
+            artists = user.artists
 
             if artists:
                 artist_num = 1
                 top_artists = []
-                for artist in artists[0:5]:
-                    top_artists.append({'id': artist_num, 'name': artist.get('name', 'Artist Name'), 'img': artist.get('image_url', 'Artist Image')})
+                for artist in artists[:5]:
+                    top_artists.append({'id': artist_num, 'name': artist.name, 'img': artist.image})
                     artist_num += 1
+                
+                # zipcode = user.zipcode
+                # coords = get_lat_long(zipcode)
+                # geohash = get_geohash(coords)
+                # top_events = ticketmaster.get_user_events(artists=artists, geohash=geohash)
 
-                all_artists = [artists[0:5], artists[5:]]
-                return render_template('user-homepage.html', user=user, all_artists=all_artists, all_events=all_events, top_artists=top_artists, spot_login=True)
+                # all_top_events = [top_events[:5], top_events[5:10], top_events[10:15], top_events[15:]]
+
+                    # all_top_events=all_top_events
+                return render_template('user-homepage.html', user=user, all_events=all_generic_events, top_artists=top_artists, spot_login=True)
             
-        return render_template('user-homepage.html', user=user, all_events=all_events)
-    return render_template('generic-homepage.html', all_events=all_events)
+        return render_template('user-homepage.html', user=user, all_events=all_generic_events)
+    return render_template('generic-homepage.html', all_events=all_generic_events)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -194,6 +200,7 @@ def change_pfp(username):
         return redirect(f'/user/edit-pfp/{u.username}')
     
     return render_template('user-pfp-edit.html', form=form, u=u)
+
 # --------------- SPOTIFY FLASK ROUTES ---------------
 
 @app.route('/logout')
@@ -216,33 +223,43 @@ def switch_account():
         return redirect(auth_url)
     return redirect(url_for('homepage'))
 
-@app.route('/artist-event-search')
-def artist_search():
-    token_info = session['spotify_token']
-    access_token = spotify.check_refesh_get_token(token_info=token_info)
-    if access_token:
-        headers = {'Authorization': f'Bearer {access_token}'}
-
-    top_artists = spotify.get_cur_u_top_artists(headers)
-    if top_artists:   
-        artists = ticketmaster.set_up_artists(top_artists)
-        if artists:
-            user = User.query.filter_by(username=g.user.username).first()
-            zipcode = user.zipcode
-            coords = get_lat_long(zipcode)
-            geohash = get_geohash(coords)
-            events = ticketmaster.get_events(artists=artists, geohash=geohash)
-
-        # SAVE EVENTS TO DB OR SESSION
-
-    return redirect(url_for('homepage'))
-
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
     info = spotify.callback(code)
     session['spotify_token'] = info
+
+    access_token = spotify.check_refesh_get_token(token_info=info)
+    headers = {'Authorization': f'Bearer {access_token}'}
+    top_artists = spotify.get_cur_u_top_artists(headers)
+
+    add_artist_to_db(top_artists)
+
     return redirect(url_for('homepage'))
+
+
+
+
+
+@app.route('/top-artists-events')
+def get_top_artists():
+    if not g.user:
+        return None
+    
+    user = User.query.filter_by(username=g.user.username).first()
+
+    artists = user.artists
+    if not artists:
+        return None
+    
+    zipcode = user.zipcode
+    coords = get_lat_long(zipcode)
+    geohash = get_geohash(coords)
+    top_events = ticketmaster.get_user_events(artists=artists, geohash=geohash)
+
+    all_top_events = [top_events[:5], top_events[5:10], top_events[10:15], top_events[15:]]
+
+    return all_top_events
 
 
 # ==============================================================
@@ -274,3 +291,36 @@ def get_geohash(coords):
     geohash = pgh.encode(latitude=lat, longitude=long, precision=9)
 
     return geohash
+
+def add_artist_to_db(top_artists):
+    u = User.query.filter_by(username=g.user.username).first()
+
+    if u.artists:
+        UserArtist.query.filter_by(user_id=u.id).delete()
+        
+    artists = ticketmaster.set_up_artists(top_artists)
+
+    for artist in artists:
+        spotify_id = artist.get('spotify_id', None)
+
+        if spotify_id:
+            new_artist = Artist.query.filter_by(spotify_id=spotify_id).first()
+
+            if not new_artist:
+                new_artist = Artist(
+                    name=artist.get('name', 'could not get name'),
+                    spotify_id=artist.get('spotify_id', 'could not get Spotify id'),
+                    spotify_url=artist.get('spotify_url', 'could not get spotify url'),
+                    image=artist.get('image_url', 'could not get image'),
+                    attraction_id=artist.get('attraction_id', 'could not get attraction id')
+                    )
+                
+                db.session.add(new_artist)
+                db.session.commit()
+          
+            new_user_artist = UserArtist(user_id=u.id, artist_id=new_artist.id)
+
+            db.session.add(new_user_artist)
+            db.session.commit()
+            
+            
