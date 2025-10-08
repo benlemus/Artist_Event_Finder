@@ -34,7 +34,7 @@
 }
 
 .row-container {
-  max-width: 2000px !important;
+  max-width: 75% !important;
 }
 
 .row-title {
@@ -58,3 +58,24 @@
   object-fit: cover;
   object-position: center;
 }
+
+/* #show-top-artists {
+  background-image: url("https://i.abcnewsfe.com/a/4c329958-dcca-42fc-9168-e43d74912c5f/taylor-swift-ap-jef-230517_1684339934408_hpEmbed_3x2.jpg");
+  filter: blur(10px);
+  width: 100%;
+  height: 300px;
+  background-size: cover;
+  background-position: top;
+  background-repeat: no-repeat;
+} */
+
+/* #show-top-artists {
+  width: 100%;
+  height: 200px;
+  background-image: linear-gradient(
+    90deg,
+    rgba(46, 133, 3, 1) -10%,
+    rgb(255, 255, 255) 52%,
+    rgba(46, 133, 3, 1) 110%
+  );
+} */

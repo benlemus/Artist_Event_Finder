@@ -117,19 +117,29 @@ class Event():
         self.event = event
     
     def create_event(self):
-        artist = self.event.get('_embedded', {}).get('attractions', [{}])[0].get('name')
-        name = self.event.get('name', 'could not get name')
-        event_id = self.event.get('id', 'could not get event id')
+        artist = self.event.get('_embedded', {}).get('attractions', [{}])[0].get('name', None)
+        name = self.event.get('name', 'could not get artist name')
+        event_id = self.event.get('id', 'could not get event info')
         url = self.event.get('url', 'could not get event url')
-        image = self.event.get('images', [{}])[0].get('url', 'could not get image')
+        image = self.event.get('images', [{}])[0].get('url', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s')
         date = self.event.get('dates', {}).get('start', {}).get('dateTime', None)
         locations = self.event.get('_embedded', {}).get('venues', [{}])[0]
-        location = f"{locations.get('city', {}).get('name', 'could not get city name')}, {locations.get('state', {}).get('name', 'could not get state name')}"
+        city = locations.get('city', {}).get('name', None)
+        state = locations.get('state', {}).get('name', None)
 
         if date:
             formated_date = datetime.fromisoformat(date[:-1] + '+00:00').strftime('%B %d %Y')
         else:
-            formated_date = 'Could not get date'
+            formated_date = 'TBA'
+
+        if not city:
+            location = state
+        elif not state:
+            location = city
+        elif city and state:
+            location = f'{city}, {state}'
+        else:
+            location = 'TBA'
 
         return {
             'artist': artist,

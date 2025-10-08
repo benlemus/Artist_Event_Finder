@@ -237,13 +237,12 @@ def callback():
 
     return redirect(url_for('homepage'))
 
-
-
-
-
 @app.route('/top-artists-events')
 def get_top_artists():
     if not g.user:
+        return None
+    
+    if not session['spotify_token']:
         return None
     
     user = User.query.filter_by(username=g.user.username).first()
@@ -259,8 +258,11 @@ def get_top_artists():
 
     all_top_events = [top_events[:5], top_events[5:10], top_events[10:15], top_events[15:]]
 
-    return all_top_events
+    return all_top_events if all_top_events else None
 
+@app.route('/testing')
+def testing():
+    return render_template('test.html')
 
 # ==============================================================
         # PYTHON FUNCTIONS

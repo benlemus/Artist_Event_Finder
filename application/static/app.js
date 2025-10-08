@@ -11,7 +11,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     data.forEach((eventGroup, index) => {
       const featuredEvents = document.createElement("div");
-      featuredEvents.className = "position-relative";
+      featuredEvents.className = "row row-cols-2 mx-auto";
+      featuredEvents.style.maxWidth = "60vw";
 
       const carouselItem = document.createElement("div");
       if (index == 0) {
@@ -23,14 +24,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       cardGroup.className = "card-group";
 
       if (index == 0) {
-        eventGroup.slice(0, 2).forEach((event, index) => {
+        eventGroup.slice(0, 4).forEach((event, index) => {
           const newFeatured = document.createElement("div");
-          if (index == 0) {
-            newFeatured.className = "position-absolute end-50";
-            newFeatured.style.marginRight = "5%";
-          } else if (index == 1) {
-            newFeatured.className = "position-absolute start-50";
-            newFeatured.style.marginLeft = "5%";
+          newFeatured.className = "col";
+          if (index == 2 || index == 3) {
+            newFeatured.style.marginTop = "2vh";
           }
 
           const featureCard = document.createElement("div");

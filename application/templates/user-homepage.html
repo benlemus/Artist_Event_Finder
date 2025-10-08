@@ -23,143 +23,217 @@
 
 <div class="container-fluid">
   <!-- Show Top Artists -->
-  {% if top_artists %}
-  <div class="container row-title mb-4">
-    <h2 class="text-start">Top Artists</h2>
-    <div class="border-bottom border-black"></div>
-  </div>
-  <div class="container row-container text-center">
-    <div class="row justify-content-md-center">
-      {% for artist in top_artists %}
-      <div class="col col-sm-6 col-lg-2">
-        <div>
-          <span class="align-bottom fw-bold fs-1">{{artist['id']}}.</span>
-          <img src="{{artist['img']}}" alt="" style="max-height: 200px" />
-        </div>
-        <p class="fs-4 ms-4">{{artist['name']}}</p>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
+  <div class="container-fluid" style="min-height: 25vh">
+    {% if top_artists %}
+
     <div class="container row-title mb-4">
-      <h2 class="text-start">
-        Top Artists <small>(Connect Spotify to see)</small>
-      </h2>
+      <h2 class="text-start">Top Artists</h2>
       <div class="border-bottom border-black"></div>
     </div>
-    <div class="container row-container text-center">
-      <div class="row justify-content-md-center">
-        {% for artist in range(5) %}
-        <div class="col col-sm-6 col-lg-2">
+    <div class="container position-relative row-container text-center">
+      <div class="row justify-content-md-center me-5">
+        {% for artist in top_artists %}
+        <div class="col col-sm-6 col-lg-2 mt-4">
           <div>
-            <span class="align-bottom fw-bold fs-1"
-              >{{ loop.index }}{{ item }}.</span
-            >
-            <img
-              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s"
-              alt=""
-              style="max-height: 200px"
-            />
+            <span class="align-bottom fw-bold fs-1">{{artist['id']}}.</span>
+            <img src="{{artist['img']}}" alt="" style="max-height: 200px" />
           </div>
+          <p class="fs-4 ms-4">{{artist['name']}}</p>
         </div>
         {% endfor %}
       </div>
+      {% else %}
+      <div class="container row-title mb-4">
+        <h2 class="text-start">
+          Top Artists <small>(Connect Spotify to see)</small>
+        </h2>
+        <div class="border-bottom border-black"></div>
+      </div>
+      <div class="container row-container text-center">
+        <div class="row justify-content-md-center">
+          {% for artist in range(5) %}
+          <div class="col col-sm-6 col-lg-2 mt-4">
+            <div>
+              <span class="align-bottom fw-bold fs-1"
+                >{{ loop.index }}{{ item }}.</span
+              >
+              <img
+                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s"
+                alt=""
+                style="max-height: 200px"
+              />
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
   </div>
 
-  <!-- featured events -->
-  <div class="container row-title mb-4">
-    <h2 class="text-start">Picked Just For You</h2>
-    <div class="border-bottom border-black"></div>
+  <!-- FEATURED EVENTS -->
+  <div
+    class="container-fluid"
+    style="background-color: white; min-height: 45vh"
+  >
+    <!-- top tracks behind -->
+    <div class="position-relative z-n1">
+      <div class="position-absolute">
+        <div class="position-fixed" style="margin-left: 16vw">
+          <span class="fw-bold me-4 align-bottom" style="font-size: 5vh"
+            >1.</span
+          >
+          <img
+            src="https://img.freepik.com/free-vector/bokeh-theme-wallpaper_23-2148467962.jpg?semt=ais_hybrid&w=740&q=80"
+            alt=""
+            style="max-height: 200px"
+          />
+          <h5 style="margin-left: 22%">Song -Artist</h5>
+        </div>
+      </div>
+
+      <div class="position-absolute">
+        <div class="position-fixed" style="margin-left: 40.7vw">
+          <span class="fw-bold me-4 align-bottom" style="font-size: 5vh"
+            >2.</span
+          >
+          <img
+            src="https://img.freepik.com/free-vector/bokeh-theme-wallpaper_23-2148467962.jpg?semt=ais_hybrid&w=740&q=80"
+            alt=""
+            style="max-height: 200px"
+          />
+          <h5 style="margin-left: 22%">Song -Artist</h5>
+        </div>
+      </div>
+
+      <div class="position-absolute">
+        <div class="position-fixed" style="margin-left: 65.4vw">
+          <span class="fw-bold me-4 align-bottom" style="font-size: 5vh"
+            >3.</span
+          >
+
+          <img
+            src="https://img.freepik.com/free-vector/bokeh-theme-wallpaper_23-2148467962.jpg?semt=ais_hybrid&w=740&q=80"
+            alt=""
+            style="max-height: 200px"
+          />
+          <h5 style="margin-left: 22%">Song -Artist</h5>
+        </div>
+      </div>
+    </div>
+
+    <!-- hand picked -->
+    <div class="container row-title mb-5">
+      <h2 class="text-start">Picked Just For You</h2>
+      <div class="border-bottom border-black"></div>
+    </div>
+    <div class="contaier" id="featured-events" style="min-height: 57vh"></div>
   </div>
-  <div class="contaier" id="featured-events" style="min-height: 400px"></div>
 
-  <!-- top artist events -->
-
-  <div class="container row-title mb-4">
-    <h2 class="text-start">My Top Artist's Events</h2>
-    <div class="border-bottom border-black"></div>
+  <!-- TOP TRACKS -->
+  <div class="container-fluid mt-5 z-0" style="min-height: 35vh">
+    <div class="container row-title my-4">
+      <h2 class="text-center">Your Top Played Tracks</h2>
+    </div>
+    <div class="contaier" id="featured-events" style="min-height: 400px"></div>
   </div>
-  <div class="container row-container">
-    <div
-      id="topArtistCardCarousel"
-      class="carousel slide"
-      data-bs-ride="carousel"
-    >
-      <div class="carousel-inner" id="top-artist-list"></div>
 
-      <button
-        class="carousel-control-prev"
-        type="button"
-        data-bs-target="#topArtistCardCarousel"
-        data-bs-slide="prev"
+  <!-- TOP ARTIST EVENTS -->
+  <div
+    class="container-fluid mt-5 pb-5"
+    style="background-color: white; min-height: 40vh"
+  >
+    <div class="container row-title mb-5">
+      <h2 class="text-start">My Top Artist's Events</h2>
+      <div class="border-bottom border-black"></div>
+    </div>
+
+    <div class="container row-container">
+      <div
+        id="topArtistCardCarousel"
+        class="carousel slide carousel-dark"
+        data-bs-ride="carousel"
       >
-        <span class="carousel-control-prev-icon"></span>
-      </button>
-      <button
-        class="carousel-control-next"
-        type="button"
-        data-bs-target="#topArtistCardCarousel"
-        data-bs-slide="next"
-      >
-        <span class="carousel-control-next-icon"></span>
-      </button>
+        <div class="carousel-inner" id="top-artist-list"></div>
+
+        <button
+          class="carousel-control-prev"
+          type="button"
+          data-bs-target="#topArtistCardCarousel"
+          data-bs-slide="prev"
+        >
+          <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button
+          class="carousel-control-next"
+          type="button"
+          data-bs-target="#topArtistCardCarousel"
+          data-bs-slide="next"
+        >
+          <span class="carousel-control-next-icon"></span>
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- popular events -->
-  <div class="container row-title mb-4">
-    <h2 class="text-start">Popular Events</h2>
-    <div class="border-bottom border-black"></div>
-  </div>
-  <div class="container row-container">
-    <div
-      id="popularCardCarousel"
-      class="carousel slide"
-      data-bs-ride="carousel"
-    >
-      <div class="carousel-inner">
-        {% for event_group in all_events %}
-        <div class="carousel-item {% if loop.first %} active {% endif %}">
-          <div class="card-group">
-            {% for event in event_group %}
-            <div class="card">
-              <img
-                src="{{event.image}}"
-                alt=""
-                class="card-img-top"
-                style="max-height: 230px"
-              />
-              <div class="card-body">
-                <h5 class="card-title">{{event.name}}</h5>
-                <p class="card-text">{{event.location}}</p>
-                <p class="card-text">{{event.date}}</p>
-                <a href="" class="btn btn-primary">Get tickets</a>
+  <div class="container-fluid pt-5" style="background-color: white">
+    <div class="container row-title mb-5">
+      <h2 class="text-start">Popular Events</h2>
+      <div class="border-bottom border-black"></div>
+    </div>
+    <div class="container row-container">
+      <div
+        id="popularCardCarousel"
+        class="carousel slide carousel-dark"
+        data-bs-ride="carousel"
+      >
+        <div class="carousel-inner">
+          {% for event_group in all_events %}
+          <div class="carousel-item {% if loop.first %} active {% endif %}">
+            <div class="card-group">
+              {% for event in event_group %}
+              <div class="card">
+                <img
+                  src="{{event.image}}"
+                  alt=""
+                  class="card-img-top"
+                  style="max-height: 230px"
+                />
+                <div class="card-body">
+                  <h5 class="card-title">{{event.name}}</h5>
+                  <p class="card-text">{{event.location}}</p>
+                  <p class="card-text">{{event.date}}</p>
+                  <a href="" class="btn btn-primary">Get tickets</a>
+                  <a href="/add-to-wishlist" class="btn btn-success ms-3"
+                    >Add to Wishlist</a
+                  >
+                </div>
               </div>
+              {% endfor %}
             </div>
-            {% endfor %}
           </div>
+          {% endfor %}
         </div>
-        {% endfor %}
+        <button
+          class="carousel-control-prev"
+          type="button"
+          data-bs-target="#popularCardCarousel"
+          data-bs-slide="prev"
+        >
+          <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button
+          class="carousel-control-next"
+          type="button"
+          data-bs-target="#popularCardCarousel"
+          data-bs-slide="next"
+        >
+          <span class="carousel-control-next-icon"></span>
+        </button>
       </div>
-      <button
-        class="carousel-control-prev"
-        type="button"
-        data-bs-target="#popularCardCarousel"
-        data-bs-slide="prev"
-      >
-        <span class="carousel-control-prev-icon"></span>
-      </button>
-      <button
-        class="carousel-control-next"
-        type="button"
-        data-bs-target="#popularCardCarousel"
-        data-bs-slide="next"
-      >
-        <span class="carousel-control-next-icon"></span>
-      </button>
     </div>
   </div>
+  <div class="container-fluid" style="min-height: 15vh"></div>
   {% endblock %}
 </div>
