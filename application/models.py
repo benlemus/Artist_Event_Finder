@@ -7,6 +7,7 @@ import json
 bcrypt = Bcrypt()
 db = SQLAlchemy()
 
+
 class User(db.Model):
     __tablename__ = 'users'
 
@@ -23,6 +24,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     artists = db.relationship('Artist', secondary='users_artists', backref='users', lazy='dynamic')
+
 
     @classmethod 
     def signup(cls, name, username, email, password, country, zipcode, bio, profile_img):
@@ -45,6 +47,7 @@ class User(db.Model):
         db.session.add(user)
         return user
     
+
     @classmethod
     def authenticate(cls, username, password):
         user = cls.query.filter_by(username=username).first()
@@ -55,6 +58,7 @@ class User(db.Model):
                 return user
         return False
     
+
     @classmethod
     def update_details(cls, user_id, name, username, email, country, zipcode, bio):
         country_codes = load_country_codes()
@@ -83,6 +87,7 @@ class User(db.Model):
             return user
         return False
     
+
     @classmethod
     def update_pfp(cls, username, profile_img):
         user = cls.query.filter_by(username=username).first()
@@ -92,6 +97,7 @@ class User(db.Model):
             return user
         return False
     
+
 class Artist(db.Model):
     __tablename__ = 'artists'
 
@@ -102,8 +108,10 @@ class Artist(db.Model):
     image = db.Column(db.Text, nullable=True)
     attraction_id = db.Column(db.Text, nullable=False, unique=True)
 
+
     def get_by_order(self):
         pass
+
 
 class UserArtist(db.Model):
     __tablename__ = 'users_artists'
@@ -112,16 +120,18 @@ class UserArtist(db.Model):
 
     artist_id = db.Column(db.Integer, db.ForeignKey('artists.id', ondelete='CASCADE'), primary_key=True)
 
+
 class Event():
     def __init__(self, event):
         self.event = event
     
+
     def create_event(self):
         artist = self.event.get('_embedded', {}).get('attractions', [{}])[0].get('name', None)
         name = self.event.get('name', 'could not get artist name')
         event_id = self.event.get('id', 'could not get event info')
         url = self.event.get('url', 'could not get event url')
-        image = self.event.get('images', [{}])[0].get('url', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s')
+        images = self.event.get('images', [{}])
         date = self.event.get('dates', {}).get('start', {}).get('dateTime', None)
         locations = self.event.get('_embedded', {}).get('venues', [{}])[0]
         city = locations.get('city', {}).get('name', None)
@@ -132,24 +142,33 @@ class Event():
         else:
             formated_date = 'TBA'
 
-        if not city:
+        if not city and not state:
+            location = 'TBA'
+        elif not city:
             location = state
         elif not state:
             location = city
         elif city and state:
             location = f'{city}, {state}'
-        else:
-            location = 'TBA'
+            
+        cur_biggest = 0
+        for image in images:
+            if int(image.get('width', 0)) >= cur_biggest:
+                cur_biggest = int(image.get('width', 0))
+                image_url = image.get('url', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s')
+            else:
+                continue
 
         return {
             'artist': artist,
             'name': name,
             'event_id': event_id,
             'url': url,
-            'image': image,
+            'image': image_url,
             'date': formated_date,
             'location': location
         }
+
 
 def connect_db(app):
     db.app = app

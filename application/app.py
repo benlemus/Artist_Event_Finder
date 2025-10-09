@@ -39,6 +39,7 @@ TICKETMASTER_API_KEY = os.environ.get('TICKETMASTER_API_KEY')
 spotify = SpotifyAPI(client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET, redirect_uri=SPOTIFY_REDIRECT_URI)
 ticketmaster = TicketmasterAPI(api_key=TICKETMASTER_API_KEY)
 
+
 @app.before_request
 def add_user_to_g():
     if CUR_U_ID in session:
@@ -46,17 +47,31 @@ def add_user_to_g():
 
     else:
         g.user = None
+        
 
 @app.route('/')
 def homepage():
-    events = ticketmaster.get_generic_events()
-    all_generic_events = [events[0:5], events[5:10], events[10:15], events[15:]]
+    generic_events = ticketmaster.get_generic_events()
+    all_generic_events = [generic_events[0:5], generic_events[5:10], generic_events[10:15], generic_events[15:]]
+
+    generic_artists = []
+
+    # generic_events_near_user = get_events_near_user()
+
+    for i in range(5):
+        artist = Artist.query.filter_by(id=i+1).first()
+        generic_artists.append(artist)
 
     if not g.user:
         form = LoginForm()
         return render_template('generic-homepage.html', form=form, all_events=all_generic_events)
     
     user = User.query.filter_by(username=g.user.username).first()
+
+    zipcode = user.zipcode
+    coords = get_lat_long(zipcode)
+    geohash = get_geohash(coords)
+    generic_events_geohash = ticketmaster.get_generic_events(geohash=geohash)
 
     if user:
         if session.get('spotify_token', None):
@@ -69,19 +84,11 @@ def homepage():
                 for artist in artists[:5]:
                     top_artists.append({'id': artist_num, 'name': artist.name, 'img': artist.image})
                     artist_num += 1
-                
-                # zipcode = user.zipcode
-                # coords = get_lat_long(zipcode)
-                # geohash = get_geohash(coords)
-                # top_events = ticketmaster.get_user_events(artists=artists, geohash=geohash)
-
-                # all_top_events = [top_events[:5], top_events[5:10], top_events[10:15], top_events[15:]]
-
-                    # all_top_events=all_top_events
-                return render_template('user-homepage.html', user=user, all_events=all_generic_events, top_artists=top_artists, spot_login=True)
+                return render_template('user-homepage.html', user=user, all_events=all_generic_events, top_artists=top_artists, spot_login=True, generic_events_geohash=generic_events_geohash)
             
-        return render_template('user-homepage.html', user=user, all_events=all_generic_events)
+        return render_template('user-homepage.html', user=user, all_events=all_generic_events, generic_artists=generic_artists, generic_events_geohash=generic_events_geohash)
     return render_template('generic-homepage.html', all_events=all_generic_events)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -96,6 +103,7 @@ def login():
         
         flash('Invalid username/password', 'danger')
     return redirect(url_for('homepage'))
+
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -119,6 +127,7 @@ def signup():
 
     return render_template('signup.html', form=form)
 
+
 @app.route('/user/details/<username>')
 def user_details(username):
     if not g.user:
@@ -128,6 +137,7 @@ def user_details(username):
     user = User.query.filter_by(username=username).first()
 
     return render_template('user-details.html', user=user)
+
 
 @app.route('/user/details/edit/<username>', methods=['GET', 'POST'])
 def edit_user(username):
@@ -157,6 +167,7 @@ def edit_user(username):
 
     return render_template('user-edit.html', form=form, u=u)
 
+
 @app.route('/user/password/edit/<username>', methods=['GET', 'POST'])
 def change_password(username):
     u = User.query.filter_by(username=username).first()
@@ -178,6 +189,7 @@ def change_password(username):
         return redirect(f'/user/details/{u.username}')
     
     return render_template('user-password-edit.html', form=form, u=u)
+
 
 @app.route('/user/edit-pfp/<username>', methods=['GET', 'POST'])
 def change_pfp(username):
@@ -201,13 +213,16 @@ def change_pfp(username):
     
     return render_template('user-pfp-edit.html', form=form, u=u)
 
+
 # --------------- SPOTIFY FLASK ROUTES ---------------
+
 
 @app.route('/logout')
 def logout():
     session['spotify_token'] = None
     do_logout()
     return redirect(url_for('homepage'))
+
 
 @app.route('/connect-spotify')
 def login_with_spotify():
@@ -216,6 +231,7 @@ def login_with_spotify():
         return redirect(auth_url)
     return redirect(url_for('homepage'))
 
+
 @app.route('/switch-accounts')
 def switch_account():
     auth_url = spotify.swtich_account()
@@ -223,19 +239,29 @@ def switch_account():
         return redirect(auth_url)
     return redirect(url_for('homepage'))
 
+
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
-    info = spotify.callback(code)
-    session['spotify_token'] = info
+    if code:
+        info = spotify.callback(code)
 
-    access_token = spotify.check_refesh_get_token(token_info=info)
-    headers = {'Authorization': f'Bearer {access_token}'}
-    top_artists = spotify.get_cur_u_top_artists(headers)
+        try:
+            session['spotify_token'] = info
+            access_token = spotify.check_refesh_get_token(token_info=info)
+            headers = {'Authorization': f'Bearer {access_token}'}
+            top_artists = spotify.get_cur_u_top_artists(headers)
 
-    add_artist_to_db(top_artists)
-
+            add_artist_to_db(top_artists)
+            return redirect(url_for('homepage'))
+        
+        except KeyError:
+            flash('Error getting Spotify token info', 'danger')
+            return redirect(url_for('homepage'))
+        
+    flash('Error getting Spotify code from callback', 'danger')
     return redirect(url_for('homepage'))
+
 
 @app.route('/top-artists-events')
 def get_top_artists():
@@ -258,21 +284,42 @@ def get_top_artists():
 
     all_top_events = [top_events[:5], top_events[5:10], top_events[10:15], top_events[15:]]
 
+    print(all_top_events)
     return all_top_events if all_top_events else None
+
+
+@app.route('/get-authorization')
+def get_authorization():
+    if g.user:
+        login = True
+    else:
+        login = False
+    if session.get('spotify_token', False):
+        spotify = True
+    else: 
+        spotify = False
+    print(login, spotify)
+    return {'login': login, 'spotify': spotify}
+    
 
 @app.route('/testing')
 def testing():
     return render_template('test.html')
 
+
 # ==============================================================
         # PYTHON FUNCTIONS
 # ==============================================================
+
+
 def do_login(user):
     session[CUR_U_ID] = user.id
+
 
 def do_logout():
     if CUR_U_ID in session:
         del session[CUR_U_ID]
+
 
 def get_lat_long(zipcode):
     user = {
@@ -288,11 +335,13 @@ def get_lat_long(zipcode):
 
     return (lat, long)
 
+
 def get_geohash(coords):
     lat, long = coords
     geohash = pgh.encode(latitude=lat, longitude=long, precision=9)
 
     return geohash
+
 
 def add_artist_to_db(top_artists):
     u = User.query.filter_by(username=g.user.username).first()

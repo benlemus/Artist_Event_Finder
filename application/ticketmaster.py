@@ -2,11 +2,13 @@ import requests
 from datetime import datetime
 from models import Event, Artist
 
+
 class TicketmasterAPI:
     def __init__(self, api_key, base_url="https://app.ticketmaster.com/discovery/v2"):
         self.api_key = api_key
         self.base_url = base_url
     
+
     def set_up_artists(self, artists):
         if artists:
             artists_setup = []
@@ -32,6 +34,7 @@ class TicketmasterAPI:
                 artists_setup.append(setup)
             return artists_setup 
         return None
+
 
     def get_attraction_id(self, name, spotify_url):
         if name:
@@ -63,11 +66,13 @@ class TicketmasterAPI:
         seen_events = []
         seen_artists = []
         num_events = 20
+        events_iteration = 0
         page = 0
+        max_pages = 20
 
         artist_attraction_ids = [artist.attraction_id for artist in artists]
 
-        while len(events) < num_events:
+        while len(events) < num_events and page < max_pages:
 
             if len(seen_artists) == 0:
                 artist_attraction_ids = [artist.attraction_id for artist in artists]
@@ -79,23 +84,39 @@ class TicketmasterAPI:
                         artist_attraction_ids.remove(cur_a.attraction_id)
 
             if geohash:
-                params = {
-                    'attractionId': artist_attraction_ids,
-                    'geoPoint': geohash,
-                    'sort': 'distance,date,asc',
-                    'apikey': self.api_key
-                }
+                if events_iteration >= 5:
+                    params = {
+                        'attractionId': artist_attraction_ids,
+                        'geoPoint': geohash,
+                        'page': page,
+                        'sort': 'distance,date,asc',
+                        'apikey': self.api_key
+                    }
+                else:
+                    params = {
+                        'attractionId': artist_attraction_ids,
+                        'geoPoint': geohash,
+                        'radius': '200',
+                        'unit': 'miles',
+                        'page': page,
+                        'sort': 'distance,date,asc',
+                        'apikey': self.api_key
+                    }
             else:
                 params = {
                     'attractionId': artist_attraction_ids,
                     'sort': 'relevance,desc',
+                    'page': page,
                     'apikey': self.api_key
                 }
 
-            res = requests.get(
-                f'{self.base_url}/events.json', params=params)
-            
-            event_data = res.json().get('_embedded', {}).get('events', [{}])
+            try:
+                res = requests.get(
+                    f'{self.base_url}/events.json', params=params)
+                
+                event_data = res.json().get('_embedded', {}).get('events', [{}])
+            except requests.RequestException as e:
+                print(f'API error: {e}')
 
             for event in event_data:
 
@@ -129,63 +150,56 @@ class TicketmasterAPI:
                 seen_events.append(event_id)
                 new_event = Event(event)
                 events.append(new_event.create_event())
+
+                events_iteration += 1
             page += 1                
 
         return events if events else None
  
-        
-    def get_generic_events(self):
+
+    def get_generic_events(self, geohash=None):
         events = []
-        seen_artists = []    
+        seen_artists = []
         num_events = 20
         page = 0
 
         while len(events) < num_events:
 
+            if geohash:
+                params = {
+                    'classificationName': 'music',
+                    'geoPoint': geohash,
+                    'radius': '50',
+                    'unit': 'miles',
+                    'page': page,
+                    'sort': 'relevance,desc',
+                    'apikey': self.api_key
+                }
+            else:
+                params={
+                    'classificationName': 'music',
+                    'sort': 'relevance,desc',
+                    'page': page,
+                    'apikey': self.api_key
+                }
+
             res = requests.get(
-                f'{self.base_url}/events.json', 
-                    params={
-                        'classificationName': 'music',
-                        'sort': 'relevance,desc',
-                        'page': page,
-                        'apikey': self.api_key
-                    }
-                )
+                f'{self.base_url}/events.json', params=params)
+            
+            event_data = res.json().get('_embedded', {}).get('events', [{}])
 
-            data = res.json().get('_embedded', {}).get('events', [{}])
-
-            for event in data:
+            for event in event_data:
                 if len(events) >= num_events:
                     break
 
-                artist = event.get('_embedded', {}).get('attractions', [{}])[0].get('name')
+                artist = event.get('_embedded', {}).get('attractions', [{}])[0].get('name', event.get('name'))
 
                 if artist in seen_artists:
                     continue
-                name = event.get('name', 'could not get name')
-                event_id = event.get('id', 'could not get event id')
-                url = event.get('url', 'could not get event url')
-                image = event.get('images', [{}])[0].get('url', 'could not get image')
-                date = event.get('dates', {}).get('start', {}).get('dateTime', None)
-                locations = event.get('_embedded', {}).get('venues', [{}])[0]
-                location = f"{locations.get('city', {}).get('name', 'could not get city name')}, {locations.get('state', {}).get('name', 'could not get state name')}"
-
-                if date:
-                    formated_date = datetime.fromisoformat(date[:-1] + '+00:00').strftime('%B %d %Y')
-                else:
-                    formated_date = 'Could not get date'
-                e_setup = {
-                    'name': name,
-                    'event_id': event_id,
-                    'url': url,
-                    'image': image,
-                    'date': formated_date,
-                    'location': location
-                }
-
+                
                 seen_artists.append(artist)
-                events.append(e_setup)
-  
+                new_event = Event(event)
+                events.append(new_event.create_event())
+            page += 1                
 
-            page += 1 
-        return events
+        return events if events else None

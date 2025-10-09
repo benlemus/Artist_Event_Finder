@@ -6,12 +6,14 @@ import pgeocode
 import pandas
 import json
 
+
 class NewUserForm(FlaskForm):
     ''' form for adding a new user '''
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.country.choices = self.get_country_choices()
+
 
     @staticmethod
     def get_country_choices():
@@ -24,6 +26,7 @@ class NewUserForm(FlaskForm):
                 country_choices.append((key, key))
         return country_choices
     
+
     def validate_zipcode(self, zipcode):
         if not check_zipcode(zipcode.data, self.country.data):
             raise ValidationError('Invalid zipcode for the selected country.')
@@ -51,6 +54,7 @@ class EditUserForm(FlaskForm):
         super().__init__(*args, **kwargs)
         self.country.choices = self.get_country_choices()
 
+
     @staticmethod
     def get_country_choices():
         country_choices = []
@@ -62,6 +66,7 @@ class EditUserForm(FlaskForm):
                 country_choices.append((key, key))
         return country_choices
     
+
     def validate_zipcode(self, zipcode):
         if not check_zipcode(zipcode.data, self.country.data):
             raise ValidationError('Invalid zipcode for the selected country.')
@@ -73,14 +78,17 @@ class EditUserForm(FlaskForm):
     zipcode = StringField('Zipcode', validators=[DataRequired(), Length(min=5,max=5), validate_zipcode])
     bio = TextAreaField('Bio', validators=[Length(max=100)])
 
+
 class ChangePasswordForm(FlaskForm):
     password = PasswordField('Old Password', validators=[DataRequired(), Length(min=6)])
 
     new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm New Password', validators=[DataRequired(), Length(min=6)])
 
+
 class ChangePfpForm(FlaskForm):
     profile_img = StringField('profile_img')
+
 
 def check_zipcode(zipcode, country):
     load_cc = load_country_codes()
@@ -91,6 +99,7 @@ def check_zipcode(zipcode, country):
     if data is not None and not pandas.isna(data['latitude']) and not pandas.isna(data['longitude']):
         return True
     return False
+
 
 def load_country_codes(file_path='data/countries.json'):
     with open(file_path, 'r') as file:

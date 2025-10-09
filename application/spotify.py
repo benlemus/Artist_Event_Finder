@@ -3,6 +3,7 @@ import time
 import requests
 from urllib.parse import urlencode
 
+
 class SpotifyAPI:
     def __init__(self, client_id, client_secret, redirect_uri, base_url="https://api.spotify.com/v1", token_url='https://accounts.spotify.com/api/token', auth_url='https://accounts.spotify.com/authorize', scope='user-read-private user-read-email user-top-read streaming'):
         self.client_id = client_id
@@ -15,11 +16,13 @@ class SpotifyAPI:
 
 # TOKENS/ GENERIC SPOTIFY API
 
+
     def auth_token_header(self):
         auth_str = f'{self.client_id}:{self.client_secret}'
         auth_bytes = auth_str.encode('utf-8')
         auth_base64 = base64.b64encode(auth_bytes).decode('utf-8')
         return {'Authorization': f'Basic {auth_base64}'}
+
 
     def get_token(self, code):
         payload = {
@@ -33,6 +36,7 @@ class SpotifyAPI:
         res = requests.post(self.token_url, data=payload, headers=headers)
 
         return res.json()
+
 
     def refresh_token(self, refresh_token):
         payload = {
@@ -58,6 +62,7 @@ class SpotifyAPI:
                 return None
         return info['access_token']
     
+    
     def callback(self, code):
         if code:
             token_info = self.get_token(code)
@@ -67,7 +72,9 @@ class SpotifyAPI:
             return None
         return None
     
+
 # FUNCTIONS
+
 
     def swtich_account(self):
         params = {
@@ -78,6 +85,7 @@ class SpotifyAPI:
             'show_dialog': True
         }
         return f'{self.auth_url}?{urlencode(params)}'
+
 
     def login_with_spotify(self, token_info=None):
         if token_info == None:
@@ -90,9 +98,11 @@ class SpotifyAPI:
 
             return f'{self.auth_url}?{urlencode(params)}'
 
+
     def get_cur_u(self, headers):
         res = requests.get(f'{self.base_url}/me', headers=headers)
         return res.json()
+
 
     def get_cur_u_top_artists(self, headers):
         top_artists = requests.get(
@@ -107,14 +117,23 @@ class SpotifyAPI:
         users_top = top_artists.json()
 
         artists_setup = []
-        
-        for artist in users_top.get('items', {}): 
+                    
+        for artist in users_top.get('items', {}):
+            images = artist.get('images')
+            cur_biggest = 0
+            for image in images:
+                if int(image.get('width', 0)) >= cur_biggest:
+                    cur_biggest = int(image.get('width', 0))
+                    image_url = image.get('url', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwoFiJiFNFd9HI4Ez177ayXT1aDEejtgyMJA&s')
+                else:
+                    continue
+
             setup = {
                 'name': artist.get('name', None),
                 'spotify_id': artist.get('id'),
                 'spotify_url': artist.get('external_urls', {}).get('spotify', None),
-                'image_url': artist.get('images')[0].get('url')
+                'image_url': image_url
             }
             artists_setup.append(setup)     
 
-        return artists_setup
+        return artists_setup if artists_setup else None

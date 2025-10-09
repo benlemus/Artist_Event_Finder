@@ -1,11 +1,36 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  const topArtistList = document.getElementById("top-artist-list");
-  const featuredEventsContainer = document.getElementById("featured-events");
-  topArtistList.innerHTML = "<h3> Loading Events... </h3>";
+  let is_logged_in = false;
+  let spotify_connected = false;
 
   try {
+    const res = await axios.get("/get-authorization");
+    const data = await res.data;
+
+    is_logged_in = data.login;
+    spotify_connected = data.spotify;
+  } catch (error) {
+    console.log("could not get log in/spotify info");
+  }
+
+  const topArtistList = document.getElementById("top-artist-list");
+  const featuredEventsContainer = document.getElementById("featured-events");
+  const showFeaturedEvents = document.getElementById("show-featured-events");
+  const showTopTracksBehind = document.getElementById("show-top-tracks-behind");
+  const showTopTracks = document.getElementById("show-top-tracks");
+
+  // if (spotify_connected == false) {
+  //   showFeaturedEvents.style.display = "none";
+  //   showTopTracksBehind.style.display = "none";
+  //   showTopTracks.style.display = "none";
+  //   return;
+  // } else if (spotify_connected == true) {
+  //   showFeaturedEvents.style.display = "block";
+  //   showTopTracksBehind.style.display = "block";
+  //   showTopTracks.style.display = "block";
+  // }
+  try {
     const res = await axios.get("/top-artists-events");
-    const data = res.data;
+    const data = await res.data;
 
     topArtistList.innerHTML = "";
 
@@ -44,7 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           fImgCol.className = "col-md-4";
 
           const fImg = document.createElement("img");
-          fImg.className = "img-fluid rounded-start";
+          fImg.className = "img-fluid rounded-start grid-card-img";
           fImg.src = event.image;
 
           const fBodyCol = document.createElement("div");
