@@ -25,6 +25,10 @@ class User(db.Model):
 
     artists = db.relationship('Artist', secondary='users_artists', backref='users', lazy='dynamic')
 
+    events = db.relationship('Event', secondary='users_events', backref='users', lazy='dynamic')
+
+    wishlist = db.relationship('Event', secondary='wishlist', backref='wished_events', lazy='dynamic')
+
 
     @classmethod 
     def signup(cls, name, username, email, password, country, zipcode, bio, profile_img):
@@ -121,7 +125,59 @@ class UserArtist(db.Model):
     artist_id = db.Column(db.Integer, db.ForeignKey('artists.id', ondelete='CASCADE'), primary_key=True)
 
 
-class Event():
+class Event(db.Model):
+    __tablename__ = 'events'
+
+    event_id = db.Column(db.Text, nullable=False, unique=True, primary_key=True)
+    name = db.Column(db.Text, nullable=False)
+    artist = db.Column(db.Text, nullable=False)
+    url = db.Column(db.Text, nullable=False)
+    image = db.Column(db.Text, nullable=False)
+    date = db.Column(db.Date, nullable=True)
+    location = db.Column(db.Text, nullable=False)
+
+
+    @property
+    def formatted_date(self):
+        return self.date.strftime('%B %d, %Y') if self.date else 'TBA'
+    
+
+    @classmethod
+    def get_condensed_events(cls, artists, max_events=16):
+        events = []
+        artist_names = [artist.name for artist in artists]
+
+        for artist in artist_names:
+            if len(events) >= max_events:
+                break
+
+            event = Event.query.filter_by(artist=artist).order_by(Event.date.asc()).limit( 2).all()
+
+            if not event:
+                continue
+
+            events.append(event)
+        
+        return events
+    
+
+class UserEvent(db.Model):
+    __tablename__ = 'users_events'
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+
+    event_id = db.Column(db.Text, db.ForeignKey('events.event_id', ondelete='CASCADE'), primary_key=True)   
+ 
+
+class WishList(db.Model):
+    __tablename__ = 'wishlist'
+
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+
+    event_id = db.Column(db.Text, db.ForeignKey('events.event_id', ondelete='CASCADE'), primary_key=True)   
+    
+
+class CreateEvent():
     def __init__(self, event):
         self.event = event
     
@@ -138,9 +194,9 @@ class Event():
         state = locations.get('state', {}).get('name', None)
 
         if date:
-            formated_date = datetime.fromisoformat(date[:-1] + '+00:00').strftime('%B %d %Y')
+            formatted_date = datetime.fromisoformat(date[:-1]).date()
         else:
-            formated_date = 'TBA'
+            formatted_date = None
 
         if not city and not state:
             location = 'TBA'
@@ -165,7 +221,7 @@ class Event():
             'event_id': event_id,
             'url': url,
             'image': image_url,
-            'date': formated_date,
+            'date': formatted_date,
             'location': location
         }
 

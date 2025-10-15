@@ -23,7 +23,7 @@
 
 <div class="container-fluid">
   <!-- Show Top Artists -->
-  <div class="container-fluid" id="show-top-artists" style="min-height: 25vh">
+  <div class="container-fluid" id="show-top-artists" style="min-height: 34vh">
     {% if top_artists %}
 
     <div class="container row-title mb-4">
@@ -49,8 +49,8 @@
         <div class="border-bottom border-black"></div>
       </div>
       <div
-        class="container row-container text-center mt-3"
-        style="position: absolute; margin-left: 10vw"
+        class="container row-container text-center"
+        style="position: absolute"
       >
         <div class="row justify-content-md-center me-5">
           {% for artist in generic_artists %}
@@ -63,9 +63,6 @@
                 style="max-height: 200px; filter: blur(15px)"
               />
             </div>
-            <p class="fs-4" style="margin-left: 13%; filter: blur(15px)">
-              {{artist['name']}}
-            </p>
           </div>
           {% endfor %}
         </div>
@@ -83,7 +80,7 @@
         ></div>
         <h3
           class="position-absolute"
-          style="font-size: 5em; margin-left: 32%; margin-top: 3%"
+          style="font-size: 5em; margin-left: 26%; margin-top: 3%"
         >
           Connect Spotify To View
         </h3>
@@ -102,7 +99,7 @@
     <!-- top tracks behind -->
     <div class="position-relative z-n1">
       <div class="position-absolute">
-        <div class="position-fixed" style="margin-left: 16vw">
+        <div class="position-fixed" style="margin-left: 7vw">
           <span class="fw-bold me-4 align-bottom" style="font-size: 5vh"
             >1.</span
           >
@@ -116,7 +113,7 @@
       </div>
 
       <div class="position-absolute">
-        <div class="position-fixed" style="margin-left: 40.7vw">
+        <div class="position-fixed" style="margin-left: 37vw">
           <span class="fw-bold me-4 align-bottom" style="font-size: 5vh"
             >2.</span
           >
@@ -130,7 +127,7 @@
       </div>
 
       <div class="position-absolute">
-        <div class="position-fixed" style="margin-left: 65.4vw">
+        <div class="position-fixed" style="margin-left: 67vw">
           <span class="fw-bold me-4 align-bottom" style="font-size: 5vh"
             >3.</span
           >
@@ -162,13 +159,12 @@
     <div class="container row-title my-4">
       <h2 class="text-center">Your Top Played Tracks</h2>
     </div>
-    <div class="contaier" id="featured-events" style="min-height: 400px"></div>
   </div>
 
   <!-- TOP ARTIST EVENTS -->
   <div
     class="container-fluid mt-5 pb-5"
-    style="background-color: white; min-height: 40vh"
+    style="background-color: white; min-height: 50vh"
     id="show-top-tracks"
   >
     <div class="container row-title mb-5">
@@ -206,18 +202,24 @@
 
   <!-- GENERIC EVENTS NEAR USER -->
 
-  <div class="container-fluid pt-5">
+  <div class="container-fluid pt-5" style="background-color: white">
     <div class="container row-title mb-5">
       <h2 class="text-start">Events Near You</h2>
       <div class="border-bottom border-black"></div>
     </div>
     <div class="container-fluid" style="min-height: 57vh">
-      <div class="row row-cols-3 mx-auto" style="max-width: 80vw">
+      <div class="row row-cols-3 mx-auto" style="max-width: 90vw">
         {% for event in generic_events_geohash %}
         <div class="col">
-          <div class="card mb-3" style="max-width: 1000px; min-height: 350px">
-            <div class="row g-0" style="min-height: 350px">
-              <div class="col-md-4">
+          <div
+            class="card mb-3"
+            style="min-height: 300px; max-width: 700px; max-height: 300px"
+          >
+            <div class="row g-0">
+              <div
+                class="col-md-4 pt-1 ps-1"
+                style="min-height: 290px; max-height: 290px"
+              >
                 <img
                   src="{{event.image}}"
                   alt=""
@@ -229,15 +231,29 @@
                 <div class="card-body">
                   <h3 class="card-title">{{event.name}}</h3>
                   <p class="card-text">{{event.location}}</p>
-                  <p class="card-text">{{event.date}}</p>
+                  <p class="card-text">
+                    {{ event.date.strftime('%B %d, %Y') if event.date else 'TBA'
+                    }}
+                  </p>
                   <h5 class="card-title">{{event.artist}}</h5>
 
                   <a href="{{event.url}}" class="btn btn-primary"
                     >Get Tickets</a
                   >
-                  <a href="/add-to-wishlist" class="btn btn-success"
-                    >Add to Wishlist</a
+                  {% if event.id not in wishlist %}
+                  <button
+                    class="btn btn-success ms-3 wishlistBtn"
+                    data-eventid="{{event.event_id}}"
                   >
+                    Add to Wishlist
+                  </button>
+                  {% else %}
+                  <button
+                    class="btn btn-danger ms-3 wishlistBtn"
+                    data-eventid="{{event.event_id}}"
+                  >
+                    Remove from Wishlist</button
+                  >{% endif %}
                 </div>
               </div>
             </div>
@@ -250,7 +266,7 @@
   <!-- popular events -->
   <div class="container-fluid pt-5" style="background-color: white">
     <div class="container row-title mb-5">
-      <h2 class="text-start">Popular Events</h2>
+      <h2 class="text-start">Trending Events</h2>
       <div class="border-bottom border-black"></div>
     </div>
     <div class="container row-container">
@@ -274,11 +290,27 @@
                 <div class="card-body">
                   <h5 class="card-title">{{event.name}}</h5>
                   <p class="card-text">{{event.location}}</p>
-                  <p class="card-text">{{event.date}}</p>
+                  <p class="card-text">
+                    {{ event.date.strftime('%B %d, %Y') if event.date else 'TBA'
+                    }}
+                  </p>
                   <a href="" class="btn btn-primary">Get tickets</a>
-                  <a href="/add-to-wishlist" class="btn btn-success ms-3"
-                    >Add to Wishlist</a
+                  {% if event.id in wishlist %}
+                  <button
+                    class="btn btn-danger ms-3 wishlistBtn"
+                    data-eventid="{{event.event_id}}"
+                    href=""
                   >
+                    Remove from Wishlist
+                  </button>
+                  {% else %}
+                  <button
+                    class="btn btn-success ms-3 wishlistBtn"
+                    data-eventid="{{event.event_id}}"
+                  >
+                    Add to Wishlist
+                  </button>
+                  {% endif %}
                 </div>
               </div>
               {% endfor %}
@@ -305,6 +337,8 @@
       </div>
     </div>
   </div>
+
+  <!-- whitespace -->
   <div class="container-fluid" style="min-height: 15vh"></div>
   {% endblock %}
 </div>

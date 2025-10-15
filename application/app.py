@@ -8,7 +8,7 @@ import pygeohash as pgh
 from sqlalchemy.exc import IntegrityError, PendingRollbackError
 from validators import url as validate_url
 
-from models import db, connect_db, User, Artist, UserArtist
+from models import db, connect_db, User, Artist, UserArtist, Event, UserEvent, WishList, CreateEvent
 from forms import NewUserForm, LoginForm, EditUserForm, ChangePasswordForm, ChangePfpForm
 from ticketmaster import TicketmasterAPI
 from spotify import SpotifyAPI
@@ -55,9 +55,6 @@ def homepage():
     all_generic_events = [generic_events[0:5], generic_events[5:10], generic_events[10:15], generic_events[15:]]
 
     generic_artists = []
-
-    # generic_events_near_user = get_events_near_user()
-
     for i in range(5):
         artist = Artist.query.filter_by(id=i+1).first()
         generic_artists.append(artist)
@@ -68,15 +65,17 @@ def homepage():
     
     user = User.query.filter_by(username=g.user.username).first()
 
-    zipcode = user.zipcode
-    coords = get_lat_long(zipcode)
-    geohash = get_geohash(coords)
-    generic_events_geohash = ticketmaster.get_generic_events(geohash=geohash)
-
     if user:
+        zipcode = user.zipcode
+        coords = get_lat_long(zipcode)
+        geohash = get_geohash(coords)
+        generic_events_geohash = ticketmaster.get_generic_events(geohash=geohash)
+
         if session.get('spotify_token', None):
 
             artists = user.artists
+            wishlist = [event.event_id for event in user.wishlist.all()]
+            print(wishlist)
 
             if artists:
                 artist_num = 1
@@ -84,7 +83,7 @@ def homepage():
                 for artist in artists[:5]:
                     top_artists.append({'id': artist_num, 'name': artist.name, 'img': artist.image})
                     artist_num += 1
-                return render_template('user-homepage.html', user=user, all_events=all_generic_events, top_artists=top_artists, spot_login=True, generic_events_geohash=generic_events_geohash)
+                return render_template('user-homepage.html', user=user, all_events=all_generic_events, top_artists=top_artists, spot_login=True, generic_events_geohash=generic_events_geohash, wishlist=wishlist)
             
         return render_template('user-homepage.html', user=user, all_events=all_generic_events, generic_artists=generic_artists, generic_events_geohash=generic_events_geohash)
     return render_template('generic-homepage.html', all_events=all_generic_events)
@@ -214,6 +213,45 @@ def change_pfp(username):
     return render_template('user-pfp-edit.html', form=form, u=u)
 
 
+@app.route('/add-to-wishlist/<event_id>', methods=['POST'])
+def add_to_wishlist(event_id):
+    if not g.user:
+        return None
+
+    user = User.query.filter_by(username=g.user.username).first()
+
+    existing_event = Event.query.filter_by(event_id=event_id).first()
+
+    if not existing_event:
+        event = ticketmaster.get_event(event_id)
+        event_to_add = Event(**event)
+        db.session.add(event_to_add)
+        db.session.commit()
+
+    new_wishlist = WishList(user_id=user.id, event_id=event_id)
+    db.session.add(new_wishlist)
+    db.session.commit()
+
+    return {'message': 'event added to wishlist'}
+
+
+@app.route('/remove-wishlist/<event_id>', methods=['POST'])
+def remove_from_wishlist(event_id):
+    user = User.query.filter_by(username=g.user.username).first()
+    item = WishList.query.filter_by(user_id=user.id, event_id=event_id).first()
+    db.session.delete(item)
+    db.session.commit()
+
+    return {'message': 'event removed from wishlist'}
+
+
+@app.route('/get-wishlist')
+def get_wishlist():
+    user = User.query.filter_by(username=g.user.username).first()
+    wishlist_events = [event.event_id for event in user.wishlist]
+
+    return wishlist_events if wishlist_events else []
+
 # --------------- SPOTIFY FLASK ROUTES ---------------
 
 
@@ -270,21 +308,73 @@ def get_top_artists():
     
     if not session['spotify_token']:
         return None
-    
-    user = User.query.filter_by(username=g.user.username).first()
+
+    user = User.query.filter_by(username=g.user.username).first()    
 
     artists = user.artists
     if not artists:
         return None
     
-    zipcode = user.zipcode
-    coords = get_lat_long(zipcode)
-    geohash = get_geohash(coords)
-    top_events = ticketmaster.get_user_events(artists=artists, geohash=geohash)
+    user_events = user.events.order_by(Event.date.asc()).limit(16).all()
+    ordered_events = []
+    top_events = []
 
-    all_top_events = [top_events[:5], top_events[5:10], top_events[10:15], top_events[15:]]
+    if not user_events:      
+        zipcode = user.zipcode
+        coords = get_lat_long(zipcode)
+        geohash = get_geohash(coords)
+        ticketmaster.add_events_to_db(artists=artists, geohash=geohash)
 
-    print(all_top_events)
+        all_events = Event.get_condensed_events(artists)
+
+        for event in ordered_events:
+            new_user_event = UserEvent(user_id=user.id, event_id=event.event_id)
+            db.session.add(new_user_event)
+            db.session.commit()
+    elif user_events:
+        all_events = Event.get_condensed_events(artists)
+
+    itteration = 0
+    looped = False
+    for _ in range(2):
+        for event_group in all_events:
+            if itteration == len(all_events):
+                looped = True
+            elif itteration == len(all_events) * 2:
+                break
+
+            if looped:
+                try:
+                    ordered_events.append(event_group[1])
+                    itteration += 1
+                except IndexError as e:
+                    print(f'No index of 2... skipping')
+            elif not looped:
+                ordered_events.append(event_group[0])
+                itteration += 1
+
+    for event in ordered_events:
+        setup = {
+            'event_id': event.event_id,
+            'name': event.name,
+            'artist': event.artist,
+            'url': event.url,
+            'image': event.image,
+            'date': event.date.strftime('%B %-d, %Y') if event.date else 'TBA',
+            'location': event.location
+        }        
+        top_events.append(setup)
+    
+    all_top_events = []
+    x = 0
+    i = 2
+
+    for _ in range(round(len(top_events)/2)):
+        section = top_events[x:i]
+        all_top_events.append(section)
+        x += 2
+        i += 2
+
     return all_top_events if all_top_events else None
 
 
@@ -298,7 +388,6 @@ def get_authorization():
         spotify = True
     else: 
         spotify = False
-    print(login, spotify)
     return {'login': login, 'spotify': spotify}
     
 
@@ -373,5 +462,3 @@ def add_artist_to_db(top_artists):
 
             db.session.add(new_user_artist)
             db.session.commit()
-            
-            

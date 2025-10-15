@@ -1,6 +1,7 @@
 import requests
 from datetime import datetime
-from models import Event, Artist
+from models import CreateEvent, Artist, Event, UserEvent
+from app import db
 
 
 class TicketmasterAPI:
@@ -58,104 +59,71 @@ class TicketmasterAPI:
         return None
 
 
-    def get_user_events(self, artists, geohash=None):
-        if not artists:
-            return 'Could not get artists'
+                # else:
+                #     params = {
+                #         'attractionId': artist_attraction_ids,
+                #         'geoPoint': geohash,
+                #         'radius': '500',
+                #         'unit': 'miles',
+                #         'page': page,
+                #         'sort': 'distance,date,asc',
+                #         'apikey': self.api_key
+                #     }
 
-        events = []
-        seen_events = []
-        seen_artists = []
-        num_events = 20
-        events_iteration = 0
-        page = 0
-        max_pages = 20
 
-        artist_attraction_ids = [artist.attraction_id for artist in artists]
+    def add_events_to_db(self, artists, geohash=None):
+        for artist in artists:
+            events_added = 0
+            seen_events= []
 
-        while len(events) < num_events and page < max_pages:
-
-            if len(seen_artists) == 0:
-                artist_attraction_ids = [artist.attraction_id for artist in artists]
-            else:
-                for artist in seen_artists:
-                    if artist:
-                        cur_a = Artist.query.filter_by(name=artist).first()
-                        seen_artists.remove(artist)
-                        artist_attraction_ids.remove(cur_a.attraction_id)
+            if not artist:
+                break
 
             if geohash:
-                if events_iteration >= 5:
-                    params = {
-                        'attractionId': artist_attraction_ids,
-                        'geoPoint': geohash,
-                        'page': page,
-                        'sort': 'distance,date,asc',
-                        'apikey': self.api_key
-                    }
-                else:
-                    params = {
-                        'attractionId': artist_attraction_ids,
-                        'geoPoint': geohash,
-                        'radius': '200',
-                        'unit': 'miles',
-                        'page': page,
-                        'sort': 'distance,date,asc',
-                        'apikey': self.api_key
-                    }
+                params = {
+                    'attractionId': artist.attraction_id,
+                    'geoPoint': geohash,
+                    'sort': 'distance,date,asc',
+                    'apikey': self.api_key
+                }
             else:
                 params = {
-                    'attractionId': artist_attraction_ids,
+                    'attractionId': artist.attraction_id,
                     'sort': 'relevance,desc',
-                    'page': page,
                     'apikey': self.api_key
                 }
 
             try:
-                res = requests.get(
-                    f'{self.base_url}/events.json', params=params)
-                
-                event_data = res.json().get('_embedded', {}).get('events', [{}])
-            except requests.RequestException as e:
-                print(f'API error: {e}')
+                res = requests.get(f'{self.base_url}/events.json', params=params)
+                response_json = res.json()
+                event_data = response_json.get('_embedded', {}).get('events', [])
 
-            for event in event_data:
-
-                if len(events) >= num_events:
-                    break
-
-                event_id = event.get('id', None)
-
-                attractions = event.get('_embedded', {}).get('attractions', [{}])
-
-                for attraction in attractions:
-                    attraction_name = attraction.get('name', None)
-                    if attraction_name in [artist.name for artist in artists]:
-                        event_artist = attraction_name
-
-                if not event_id:
-                    print('could not get event id')
+                if not event_data:
                     continue
+            
+                for event in event_data:
+                    if events_added >= 2:
+                        break
+                    
+                    event_id = event.get('id', None)
 
-                if not event_artist:
-                    print('could not get artist name')
-                    continue
+                    if event_id in seen_events:
+                        continue
 
-                if event_id in seen_events:
-                    continue
-                
-                if event_artist in seen_artists:
-                    continue
-                
-                seen_artists.append(event_artist)
-                seen_events.append(event_id)
-                new_event = Event(event)
-                events.append(new_event.create_event())
+                    created_event = CreateEvent(event)
+                    new_event = created_event.create_event()
 
-                events_iteration += 1
-            page += 1                
+                    existing_event = Event.query.filter_by(event_id=new_event['event_id']).first()
 
-        return events if events else None
- 
+                    if not existing_event:
+                        event_to_add = Event(**new_event)
+                        db.session.add(event_to_add)
+                        db.session.commit()
+
+            except Exception as e:
+                print(f'error making request: {e}')
+                break
+
 
     def get_generic_events(self, geohash=None):
         events = []
@@ -198,8 +166,27 @@ class TicketmasterAPI:
                     continue
                 
                 seen_artists.append(artist)
-                new_event = Event(event)
+                new_event = CreateEvent(event)
                 events.append(new_event.create_event())
             page += 1                
 
         return events if events else None
+    
+    def get_event(self, event_id):
+        if event_id:
+            res = requests.get(
+                f'{self.base_url}/events',
+                params={
+                    'id': event_id,
+                    'apikey': self.api_key
+                }
+            )
+
+            event_data = res.json().get('_embedded', {}).get('events', [{}])[0]
+
+            if event_data:
+                new_event = CreateEvent(event_data)
+                event = new_event.create_event()
+
+                return event
+

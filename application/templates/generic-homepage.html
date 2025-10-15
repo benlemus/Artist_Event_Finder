@@ -8,20 +8,22 @@
 <!-- content -->
 {% block content %}
 
-<div class="container">
-  <h3>Hello, you should login for a personal experience</h3>
+<div class="container" style="position: relative; min-height: 34vh">
+  <h3 class="text-center">Hello, you should login for a personal experience</h3>
   <!-- form -->
-  <form action="{{url_for('login')}}" method="POST">
-    {% include 'form-temp.j2' %}
-    <button type="submit" class="btn btn-primary mt-3">Log in!</button>
-  </form>
-  <a href="{{url_for('signup')}}">Not a user? Become one</a>
+  <div style="width: 20vw; position: absolute; left: 34%">
+    <form action="{{url_for('login')}}" method="POST">
+      {% include 'form-temp.j2' %}
+      <button type="submit" class="btn btn-primary mt-3">Log in!</button>
+    </form>
+    <a href="{{url_for('signup')}}">Not a user? Become one</a>
+  </div>
 </div>
 
 <div class="container-fluid">
   <!-- Popular events -->
   <div class="container row-title mb-4">
-    <h2 class="text-start">Popular Events</h2>
+    <h2 class="text-start">Trending Events</h2>
     <div class="border-bottom border-black"></div>
   </div>
   <div class="container row-container">
@@ -45,7 +47,10 @@
               <div class="card-body">
                 <h5 class="card-title">{{event.name}}</h5>
                 <p class="card-text">{{event.location}}</p>
-                <p class="card-text">{{event.date}}</p>
+                <p class="card-text">
+                  {{ event.date.strftime('%B %d, %Y') if event.date else 'TBA'
+                  }}
+                </p>
                 <a href="" class="btn btn-primary">Get tickets</a>
               </div>
             </div>

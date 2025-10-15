@@ -18,19 +18,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   const showTopTracksBehind = document.getElementById("show-top-tracks-behind");
   const showTopTracks = document.getElementById("show-top-tracks");
 
-  // if (spotify_connected == false) {
-  //   showFeaturedEvents.style.display = "none";
-  //   showTopTracksBehind.style.display = "none";
-  //   showTopTracks.style.display = "none";
-  //   return;
-  // } else if (spotify_connected == true) {
-  //   showFeaturedEvents.style.display = "block";
-  //   showTopTracksBehind.style.display = "block";
-  //   showTopTracks.style.display = "block";
-  // }
+  if (spotify_connected == false) {
+    showFeaturedEvents.style.display = "none";
+    showTopTracksBehind.style.display = "none";
+    showTopTracks.style.display = "none";
+    return;
+  } else if (spotify_connected == true) {
+    showFeaturedEvents.style.display = "block";
+    showTopTracksBehind.style.display = "block";
+    showTopTracks.style.display = "block";
+  }
   try {
     const res = await axios.get("/top-artists-events");
     const data = await res.data;
+    const wishlist = await axios.get("/get-wishlist");
 
     topArtistList.innerHTML = "";
 
@@ -48,13 +49,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const cardGroup = document.createElement("div");
       cardGroup.className = "card-group";
 
-      if (index == 0) {
-        eventGroup.slice(0, 4).forEach((event, index) => {
+      if (index == 0 || index == 1) {
+        eventGroup.forEach((event, index) => {
           const newFeatured = document.createElement("div");
           newFeatured.className = "col";
-          if (index == 2 || index == 3) {
-            newFeatured.style.marginTop = "2vh";
-          }
 
           const featureCard = document.createElement("div");
           featureCard.className = "card mb-3";
@@ -100,9 +98,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           fTicketBtn.href = event.url;
 
           const fWishBtn = document.createElement("a");
-          fWishBtn.className = "btn btn-success ms-3";
-          fWishBtn.textContent = "Add to Wishlist";
-          fWishBtn.href = "/add-to-wishlist";
+          if (wishlist.data.includes(event.event_id)) {
+            fWishBtn.className = "btn btn-danger ms-3 wishlistBtn";
+            fWishBtn.textContent = "Remove from Wishlist";
+            fWishBtn.dataset.eventid = event.event_id;
+            // fWishBtn.href = `/remove-wishlist/${event.event_id}`;
+          } else {
+            fWishBtn.className = "btn btn-success ms-3 wishlistBtn";
+            fWishBtn.textContent = "Add to Wishlist";
+            fWishBtn.dataset.eventid = event.event_id;
+            // fWishBtn.href = `/add-to-wishlist/${event.event_id}`;
+          }
 
           fBody.append(fTitle, fCity, fDate, fArtist, fTicketBtn, fWishBtn);
           fBody.style.fontSize = "20px";
@@ -151,9 +157,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         cardTicketBtn.href = event.url;
 
         const cardWishBtn = document.createElement("a");
-        cardWishBtn.className = "btn btn-success ms-3";
-        cardWishBtn.textContent = "Add to Wishlist";
-        cardWishBtn.href = "/add-to-wishlist";
+        if (wishlist.data.includes(event.event_id)) {
+          cardWishBtn.className = "btn btn-danger ms-3 wishlistBtn";
+          cardWishBtn.textContent = "Remove from Wishlist";
+          cardWishBtn.dataset.eventid = event.event_id;
+          // cardWishBtn.href = `/remove-wishlist/${event.event_id}`;
+        } else {
+          cardWishBtn.className = "btn btn-success ms-3 wishlistBtn";
+          cardWishBtn.textContent = "Add to Wishlist";
+          cardWishBtn.dataset.eventid = event.event_id;
+          // cardWishBtn.href = `/add-to-wishlist/${event.event_id}`;
+        }
 
         cardBody.append(
           cardTitle,
@@ -174,4 +188,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("Error getting top artist events:", error);
     topArtistList.innerHTML = "<h3> Could Not Get Events... </h3>";
   }
+  document.addEventListener("click", async (event) => {
+    if (event.target.classList.contains("wishlistBtn")) {
+      const button = event.target;
+      const eventId = button.dataset.eventid;
+      try {
+        if (button.textContent == "Add to Wishlist") {
+          const res = await axios.post(`/add-to-wishlist/${eventId}`);
+        } else if (button.textContent == "Remove from Wishlist") {
+          const res = await axios.post(`/remove-wishlist/${eventId}`);
+        }
+
+        button.classList.toggle("btn-success");
+        button.classList.toggle("btn-danger");
+        button.textContent =
+          button.textContent === "Add to Wishlist"
+            ? "Remove from Wishlist"
+            : "Add to Wishlist";
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  });
 });

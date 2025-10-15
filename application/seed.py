@@ -76,3 +76,14 @@ with app.app_context():
 #     SUBSTRING(image FROM 1 FOR 10) AS image,
 #     attraction_id
 # FROM artists;
+
+# CREATE VIEW events_truncated AS
+# SELECT
+#     event_id,
+#     name,
+#     artist,
+#     SUBSTRING(url FROM 1 FOR 10) AS url,
+#     SUBSTRING(image FROM 1 FOR 10) AS image,
+#     date,
+#     location
+# FROM events;
